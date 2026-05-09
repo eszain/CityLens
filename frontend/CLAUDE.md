@@ -2,8 +2,9 @@
 
 # CityLens — Frontend
 
-Toronto urban climate and income-inequality mapping platform. Visualises how heat exposure,
-air quality, flood risk, and green space correlate with income at the city-block level.
+Toronto urban mapping platform with multiple analytical lenses (heat, equity, canopy,
+flood, air quality). Visualises how those environmental layers correlate with income at the
+city-block level; heat exposure is one important view, not the whole product.
 
 **Stack:** Next.js 16.2.6 · React 19.2.4 · Tailwind v4 · Mapbox GL JS 3.x · shadcn/ui (base-ui) · lucide-react
 
