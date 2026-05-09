@@ -17,6 +17,19 @@ type LayerToggle = {
 
 type GeoJSONFC = GeoJSON.FeatureCollection;
 
+type RiskScore = {
+  block_id: string;
+  lat: number | null;
+  lon: number | null;
+  risk_score: number | null;
+  forecast_peak_normalized: number | null;
+  forecast_peak_temp_k: number | null;
+  lst_mean_c: number | null;
+  canopy_pct: number | null;
+  pm25: number | null;
+  vulnerability_score: number | null;
+};
+
 const TORONTO_CENTER: [number, number] = [-79.3832, 43.6532];
 const DEFAULT_ZOOM = 15.5;
 
@@ -95,6 +108,7 @@ export function MapView({
   const [layersOpen, setLayersOpen] = useState(false);
   const layersRef = useRef<LayerToggle[]>([]);
   const [layers, setLayers] = useState<LayerToggle[]>([
+    { id: "ai_risk", label: "AI risk score (Granite TTM)", active: false },
     { id: "canopy", label: "Tree canopy (sample)", active: false },
     { id: "zoning", label: "Zoning (sample)", active: false },
     { id: "flood_risk", label: "Flood risk (sample)", active: false },
@@ -226,6 +240,70 @@ export function MapView({
     }
   }, []);
 
+  const syncAiRisk = useCallback(async (active: boolean) => {
+    const map = mapRef.current;
+    if (!map?.isStyleLoaded()) return;
+
+    if (active) {
+      const scores = await fetchJson<RiskScore[]>("/risk-scores?city=toronto");
+
+      // Build a lookup: block UUID → risk_score
+      const scoreMap = new Map<string, number>();
+      for (const s of scores) {
+        if (s.block_id && s.risk_score != null) scoreMap.set(s.block_id, s.risk_score);
+      }
+
+      if (!map.getSource("blocks-ai")) {
+        // Clone the existing blocks source data and annotate with risk_score
+        const src = map.getSource("blocks") as mapboxgl.GeoJSONSource | undefined;
+        if (!src) {
+          setError("Block data not loaded yet — wait for the map to finish loading.");
+          return;
+        }
+        // Re-fetch so we have the FeatureCollection in hand
+        const fc = await fetchJson<GeoJSONFC>("/blocks/geojson?city=toronto");
+        for (const feat of fc.features) {
+          const bid = feat.id != null ? String(feat.id) : "";
+          (feat.properties as Record<string, unknown>).risk_score = scoreMap.get(bid) ?? null;
+        }
+        map.addSource("blocks-ai", { type: "geojson", data: fc });
+        map.addLayer({
+          id: "blocks-ai-fill",
+          type: "fill",
+          source: "blocks-ai",
+          slot: "middle",
+          layout: { visibility: "visible" },
+          paint: {
+            "fill-color": [
+              "interpolate", ["linear"],
+              ["coalesce", ["to-number", ["get", "risk_score"]], 0],
+              0,   "#f0fdf4",
+              25,  "#86efac",
+              50,  "#f97316",
+              75,  "#dc2626",
+              100, "#7f1d1d",
+            ],
+            "fill-opacity": 0.78,
+          },
+        });
+        map.addLayer({
+          id: "blocks-ai-outline",
+          type: "line",
+          source: "blocks-ai",
+          slot: "middle",
+          layout: { visibility: "visible" },
+          paint: { "line-color": "#1e293b", "line-opacity": 0.3, "line-width": 0.8 },
+        });
+      } else {
+        map.setLayoutProperty("blocks-ai-fill", "visibility", "visible");
+        map.setLayoutProperty("blocks-ai-outline", "visibility", "visible");
+      }
+    } else {
+      if (map.getLayer("blocks-ai-fill")) map.setLayoutProperty("blocks-ai-fill", "visibility", "none");
+      if (map.getLayer("blocks-ai-outline")) map.setLayoutProperty("blocks-ai-outline", "visibility", "none");
+    }
+  }, []);
+
   const onToggle = useCallback(
     async (id: string, active: boolean) => {
       const next = layersRef.current.map((l) => (l.id === id ? { ...l, active } : l));
@@ -233,7 +311,9 @@ export function MapView({
 
       try {
         setError(null);
-        if (OVERLAY_KEYS.includes(id as (typeof OVERLAY_KEYS)[number])) {
+        if (id === "ai_risk") {
+          await syncAiRisk(active);
+        } else if (OVERLAY_KEYS.includes(id as (typeof OVERLAY_KEYS)[number])) {
           await syncOverlays(next);
         } else if (id === "air_quality") {
           await syncAir(active);
@@ -244,7 +324,7 @@ export function MapView({
         setError(err instanceof Error ? err.message : "Layer failed to load");
       }
     },
-    [syncAir, syncFirms, syncOverlays],
+    [syncAir, syncAiRisk, syncFirms, syncOverlays],
   );
 
   useEffect(() => {
@@ -476,14 +556,26 @@ export function MapView({
                 </label>
               ))}
             </div>
-            <div className="mt-3 border-t border-zinc-200 pt-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Vulnerability</p>
-              <div className="mt-2 flex items-center gap-2 text-xs text-zinc-700">
-                <span className="h-3 flex-1 rounded bg-gradient-to-r from-[#eff3ff] via-[#6baed6] to-[#08519c]" />
+            <div className="mt-3 border-t border-zinc-200 pt-3 space-y-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Vulnerability (default)</p>
+                <div className="mt-1.5 flex items-center gap-2 text-xs text-zinc-700">
+                  <span className="h-3 flex-1 rounded bg-gradient-to-r from-[#eff3ff] via-[#6baed6] to-[#08519c]" />
+                </div>
+                <div className="mt-0.5 flex justify-between text-[11px] text-zinc-500">
+                  <span>Lower</span>
+                  <span>Higher</span>
+                </div>
               </div>
-              <div className="mt-1 flex justify-between text-[11px] text-zinc-500">
-                <span>Lower</span>
-                <span>Higher</span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">AI Risk score (Granite TTM)</p>
+                <div className="mt-1.5 flex items-center gap-2 text-xs text-zinc-700">
+                  <span className="h-3 flex-1 rounded bg-gradient-to-r from-[#f0fdf4] via-[#f97316] to-[#7f1d1d]" />
+                </div>
+                <div className="mt-0.5 flex justify-between text-[11px] text-zinc-500">
+                  <span>Low</span>
+                  <span>Critical</span>
+                </div>
               </div>
             </div>
           </div>
