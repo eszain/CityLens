@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Seed Toronto neighbourhood polygons from Open Data + mock scores, departments, demographics, sample overlays.
-Requires: DATABASE_URL, schema applied (supabase/migrations), psycopg (backend venv).
+Requires: Postgres URL (DATABASE_URL and/or SUPABASE_* — see README in .env.example), schema applied, psycopg.
 """
 
 from __future__ import annotations
@@ -10,17 +10,63 @@ import hashlib
 import json
 import os
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
 import psycopg
 
-NEIGHBOURHOODS_URL = (
-    "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/8405af37-43f9-429e-a677-d04288155821/"
-    "resource/98915fa6-760e-45da-a187-f351e1868976/download/neighbourhoods-4326.geojson"
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _load_dotenv_files() -> None:
+    """Pick up DATABASE_URL from .env files when not exported (optional).
+
+    Loads ``backend/.env`` first, then repo ``.env`` with override so the root file
+    wins for duplicate keys (avoids stale DATABASE_URL left in backend/.env alone).
+    """
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    be = ROOT / "backend" / ".env"
+    re = ROOT / ".env"
+    if be.is_file():
+        load_dotenv(be, override=False)
+    if re.is_file():
+        load_dotenv(re, override=True)
+
+
+def _resolve_dsn() -> tuple[str | None, str | None]:
+    be = ROOT / "backend"
+    if str(be) not in sys.path:
+        sys.path.insert(0, str(be))
+    from app.db_url import resolve_database_url_from_environ  # noqa: PLC0415
+
+    return resolve_database_url_from_environ(os.environ)
+
+
+# Official "Neighbourhoods" GeoJSON WGS84 (package refresh ~2025; old dataset UUIDs 404).
+# Override with TORONTO_GEOJSON_URL=file:///... or https://... if the portal moves again.
+DEFAULT_NEIGHBOURHOODS_URL = (
+    "https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/fc443770-ef0a-4025-9c2c-2cb558bfab00/"
+    "resource/0719053b-28b7-48ea-b863-068823a93aaa/download/neighbourhoods-4326.geojson"
 )
 
-ROOT = Path(__file__).resolve().parents[1]
+
+def _prop(props: dict, *keys: str) -> object:
+    """First non-empty property, trying exact keys."""
+    for k in keys:
+        if k in props and props[k] not in (None, ""):
+            return props[k]
+    lower = {str(k).lower(): v for k, v in props.items()}
+    for k in keys:
+        lk = k.lower()
+        if lk in lower and lower[lk] not in (None, ""):
+            return lower[lk]
+    return None
+
+
 SAMPLE_DATA = ROOT / "scripts" / "sample-data"
 
 
@@ -46,8 +92,19 @@ def ensure_city(cur: psycopg.Cursor) -> str:
 
 def load_geojson(url: str) -> dict:
     if url.startswith("http"):
-        with urllib.request.urlopen(url, timeout=120) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "CityLens-seed-script/1.0 (Toronto Open Data consumer)"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            raise SystemExit(
+                f"HTTP {e.code} loading GeoJSON ({url}). "
+                "Set TORONTO_GEOJSON_URL to the current \"Neighbourhoods - 4326.geojson\" "
+                "download link from https://open.toronto.ca/dataset/neighbourhoods/"
+            ) from e
     path = Path(url)
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -67,13 +124,10 @@ def seed_blocks(cur: psycopg.Cursor, city_id: str, data: dict) -> int:
             continue
         props = f.get("properties") or {}
         ext = str(
-            props.get("AREA_SHORT_CODE")
-            or props.get("NEIGHBOURHOOD_NUMBER")
-            or props.get("OBJECTID")
-            or props.get("FID")
+            _prop(props, "_id", "AREA_SHORT_CODE", "NEIGHBOURHOOD_NUMBER", "OBJECTID", "FID", "id")
             or idx
         )
-        name = str(props.get("AREA_NAME") or props.get("NAME") or f"Area {ext}")
+        name = str(_prop(props, "AREA_NAME", "NAME", "name", "NEIGHBOURHOOD") or f"Area {ext}")
         geom = geometry_to_multipolygon(geom)
         gj = json.dumps(geom)
         seed = f"{ext}:{name}"
@@ -177,17 +231,68 @@ def seed_sample_overlays(cur: psycopg.Cursor, city_id: str) -> int:
 
 
 def main() -> int:
-    dsn = os.environ.get("DATABASE_URL")
+    _load_dotenv_files()
+    dsn, dsn_err = _resolve_dsn()
+    if dsn_err:
+        print(dsn_err, file=sys.stderr)
+        return 1
     if not dsn:
-        print("DATABASE_URL is required", file=sys.stderr)
+        print(
+            "Missing database URL. Set DATABASE_URL / SUPABASE_DB_URL, "
+            'or SUPABASE_URL=http://127.0.0.1:54321 plus `supabase start` defaults on port 54322.\n'
+            "Install python-dotenv (pip install -r backend/requirements.txt) to load .env files.",
+            file=sys.stderr,
+        )
         return 1
 
-    source = os.environ.get("TORONTO_GEOJSON_URL", NEIGHBOURHOODS_URL)
+    source = os.environ.get("TORONTO_GEOJSON_URL", DEFAULT_NEIGHBOURHOODS_URL)
     print(f"Loading polygons from {source[:80]}…")
 
     data = load_geojson(source)
 
-    with psycopg.connect(dsn) as conn:
+    try:
+        try:
+            timeout_s = int(
+                os.environ.get("SEED_DB_CONNECT_TIMEOUT", os.environ.get("PGCONNECT_TIMEOUT", "60")),
+            )
+        except ValueError:
+            timeout_s = 60
+        conn_cm = psycopg.connect(dsn, connect_timeout=timeout_s)
+    except psycopg.OperationalError as e:
+        msg_l = str(e).lower()
+        print("Database connection failed.", file=sys.stderr)
+        print(f"  Details: {e}", file=sys.stderr)
+        if "timeout" in msg_l or "timed out" in msg_l:
+            print(
+                "  Supabase \"Direct connection\" often uses IPv6. On IPv4-only networks it can time out.",
+                file=sys.stderr,
+            )
+            print(
+                '  Fix: In the Supabase "Connect" dialog, copy the Session pooler URI (IPv4-compatible), '
+                "set that as DATABASE_URL, URL-encode any special characters in the password, and add "
+                "`?sslmode=require` if not present.",
+                file=sys.stderr,
+            )
+            print(
+                "  Or enable the paid IPv4 add-on. You can also try SEED_DB_CONNECT_TIMEOUT=120 (seconds).",
+                file=sys.stderr,
+            )
+        if "password authentication failed" in msg_l:
+            print(
+                "  Use the Database password from Supabase (Settings → Database), not the anon/service API keys.",
+                file=sys.stderr,
+            )
+            print(
+                "  In DATABASE_URL special characters must be percent-encoded "
+                '(e.g. < → %3C, # → %23, % → %25). If you edited only .env but not backend/.env, '
+                "this script now prefers the repo-root .env for duplicate DATABASE_URL.",
+                file=sys.stderr,
+            )
+        if "ssl" in msg_l:
+            print("  Append ?sslmode=require to DATABASE_URL when connecting off-platform.", file=sys.stderr)
+        raise SystemExit(1) from e
+
+    with conn_cm as conn:
         conn.autocommit = False
         with conn.cursor() as cur:
             city_id = ensure_city(cur)

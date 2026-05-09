@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from app.deps import DbConn
+from app.pg_json import as_geojson_properties, decode_pg_json
 
 router = APIRouter(prefix="/layers", tags=["layers"])
 
@@ -35,15 +36,16 @@ async def overlays_geojson(
     )
     features: list[dict[str, Any]] = []
     for r in rows:
+        base = as_geojson_properties(r["properties"])
         features.append(
             {
                 "type": "Feature",
                 "id": str(r["id"]),
-                "geometry": r["geom"],
+                "geometry": decode_pg_json(r["geom"]),
                 "properties": {
                     "layer_key": r["layer_key"],
                     "label": r["label"],
-                    **(r["properties"] or {}),
+                    **base,
                 },
             }
         )
@@ -74,7 +76,7 @@ async def firms_geojson(
             {
                 "type": "Feature",
                 "id": str(r["id"]),
-                "geometry": r["geom"],
+                "geometry": decode_pg_json(r["geom"]),
                 "properties": {"brightness": r["brightness"], "observed_at": r["observed_at"].isoformat()},
             }
         )
@@ -105,7 +107,7 @@ async def air_geojson(
             {
                 "type": "Feature",
                 "id": str(r["id"]),
-                "geometry": r["geom"],
+                "geometry": decode_pg_json(r["geom"]),
                 "properties": {
                     "pm25": r["pm25"],
                     "pm10": r["pm10"],
