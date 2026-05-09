@@ -8,15 +8,11 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
-export function apiBase(): string {
-  return API_BASE;
-}
-
 // Simulated network delay for demo mode (makes it feel real)
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 // ─── Generic fetch wrapper ───────────────────────────────────────────────────
-export async function fetchJson<T>(path: string): Promise<T> {
+async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     cache: 'no-store',
@@ -31,7 +27,7 @@ export async function fetchBlocks(demo: boolean): Promise<Block[]> {
     await delay(600);
     return DEMO_BLOCKS;
   }
-  return fetchJson<Block[]>('/blocks/');
+  return apiFetch<Block[]>('/blocks/');
 }
 
 export async function fetchBlock(id: string, demo: boolean): Promise<Block> {
@@ -41,7 +37,7 @@ export async function fetchBlock(id: string, demo: boolean): Promise<Block> {
     if (!b) throw new Error('Block not found');
     return b;
   }
-  return fetchJson<Block>(`/blocks/${id}`);
+  return apiFetch<Block>(`/blocks/${id}`);
 }
 
 // ─── Work orders ─────────────────────────────────────────────────────────────
@@ -50,7 +46,7 @@ export async function fetchWorkOrders(demo: boolean): Promise<WorkOrder[]> {
     await delay(400);
     return DEMO_WORK_ORDERS;
   }
-  return fetchJson<WorkOrder[]>('/work_orders/');
+  return apiFetch<WorkOrder[]>('/work_orders/');
 }
 
 export async function createWorkOrder(
@@ -87,7 +83,7 @@ export async function fetchEquityAlerts(demo: boolean): Promise<EquityAlert[]> {
     await delay(350);
     return DEMO_EQUITY_ALERTS;
   }
-  return fetchJson<EquityAlert[]>('/equity/alerts');
+  return apiFetch<EquityAlert[]>('/equity/alerts');
 }
 
 export async function fetchEquityScore(demo: boolean): Promise<{ score: number; breakdown: Record<string, number> }> {
@@ -98,7 +94,7 @@ export async function fetchEquityScore(demo: boolean): Promise<{ score: number; 
       breakdown: { responseTime: 28, investment: 22, canopy: 41, workOrders: 45 },
     };
   }
-  return fetchJson('/equity/score');
+  return apiFetch('/equity/score');
 }
 
 // ─── City stats ───────────────────────────────────────────────────────────────
@@ -107,7 +103,7 @@ export async function fetchCityStats(demo: boolean): Promise<CityStats> {
     await delay(200);
     return DEMO_CITY_STATS;
   }
-  return fetchJson<CityStats>('/ingest/stats');
+  return apiFetch<CityStats>('/ingest/stats');
 }
 
 // ─── Layers (map overlays) ────────────────────────────────────────────────────
@@ -122,7 +118,7 @@ export async function fetchLayer(layerType: string, demo: boolean): Promise<Laye
     // Return a stub — real GeoJSON injected by MapView from block data
     return { type: layerType as LayerData['type'], geojson: { type: 'FeatureCollection', features: [] } };
   }
-  return fetchJson<LayerData>(`/layers/${layerType}`);
+  return apiFetch<LayerData>(`/layers/${layerType}`);
 }
 
 // ─── Scoring (on-demand re-score) ─────────────────────────────────────────────

@@ -1,317 +1,384 @@
-"use client";
+'use client';
 
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
+import type { ActiveView, Block } from '@/types';
 
-import { fetchJson } from "@/lib/api";
+// Mapbox token — set in .env.local as NEXT_PUBLIC_MAPBOX_TOKEN
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 
-type LayerToggle = {
-  id: string;
-  label: string;
-  active: boolean;
-};
+// Heat color scale
+function heatColor(score: number): string {
+  if (score >= 85) return '#ef4444';
+  if (score >= 70) return '#f97316';
+  if (score >= 55) return '#f59e0b';
+  if (score >= 35) return '#84cc16';
+  return '#22c55e';
+}
 
-type GeoJSONFC = GeoJSON.FeatureCollection;
+// Equity color (inverse of income decile)
+function equityColor(decile: number): string {
+  if (decile <= 2) return '#ef4444';
+  if (decile <= 4) return '#f97316';
+  if (decile <= 6) return '#f59e0b';
+  if (decile <= 8) return '#84cc16';
+  return '#22c55e';
+}
 
-const TORONTO_CENTER: [number, number] = [-79.38, 43.71];
-const DEFAULT_ZOOM = 10.2;
+// Canopy color
+function canopyColor(pct: number): string {
+  if (pct >= 50) return '#15803d';
+  if (pct >= 30) return '#22c55e';
+  if (pct >= 20) return '#86efac';
+  if (pct >= 10) return '#fbbf24';
+  return '#ef4444';
+}
 
-const OVERLAY_KEYS = ["canopy", "zoning", "flood_risk"] as const;
+function getBlockColor(block: Block, view: ActiveView): string {
+  switch (view) {
+    case 'equity': return equityColor(block.incomeDecile);
+    case 'canopy': return canopyColor(block.treeCanopy);
+    case 'flood': return block.floodRisk === 'high' ? '#ef4444' : block.floodRisk === 'medium' ? '#f59e0b' : '#22c55e';
+    case 'aqi': return block.airQualityIndex > 130 ? '#ef4444' : block.airQualityIndex > 100 ? '#f59e0b' : '#22c55e';
+    default: return heatColor(block.heatScore);
+  }
+}
 
-export default function MapView() {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const layersRef = useRef<LayerToggle[]>([]);
-  const [layers, setLayers] = useState<LayerToggle[]>([
-    { id: "canopy", label: "Tree canopy (sample)", active: false },
-    { id: "zoning", label: "Zoning (sample)", active: false },
-    { id: "flood_risk", label: "Flood risk (sample)", active: false },
-    { id: "air_quality", label: "Air quality (OpenAQ ingest)", active: false },
-    { id: "firms", label: "NASA FIRMS hotspots", active: false },
-  ]);
+interface Props {
+  blocks: Block[];
+  selectedBlock: Block | null;
+  setSelectedBlock: (b: Block | null) => void;
+  activeView: ActiveView;
+  loading: boolean;
+}
 
-  layersRef.current = layers;
+export function MapView({ blocks, selectedBlock, setSelectedBlock, activeView, loading }: Props) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState(false);
 
-  const token = useMemo(() => process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() || "", []);
-
-  const syncOverlays = useCallback(async (next: LayerToggle[]) => {
-    const map = mapRef.current;
-    if (!map?.isStyleLoaded()) return;
-
-    const activeKeys = OVERLAY_KEYS.filter((k) => next.find((x) => x.id === k)?.active);
-
-    if (!map.getSource("overlays")) {
-      const qs = OVERLAY_KEYS.join(",");
-      const data = await fetchJson<GeoJSONFC>(
-        `/layers/overlays/geojson?city=toronto&layers=${encodeURIComponent(qs)}`,
-      );
-      map.addSource("overlays", { type: "geojson", data });
-      const defs: Array<{ layerId: string; key: string; color: string }> = [
-        { layerId: "overlay-canopy", key: "canopy", color: "#15803d" },
-        { layerId: "overlay-zoning", key: "zoning", color: "#a855f7" },
-        { layerId: "overlay-flood", key: "flood_risk", color: "#0369a1" },
-      ];
-      for (const d of defs) {
-        map.addLayer({
-          id: d.layerId,
-          type: "fill",
-          source: "overlays",
-          filter: ["==", ["get", "layer_key"], d.key],
-          layout: { visibility: "none" },
-          paint: { "fill-color": d.color, "fill-opacity": 0.28 },
-        });
-        map.addLayer({
-          id: `${d.layerId}-outline`,
-          type: "line",
-          source: "overlays",
-          filter: ["==", ["get", "layer_key"], d.key],
-          layout: { visibility: "none" },
-          paint: { "line-color": d.color, "line-width": 1, "line-opacity": 0.7 },
-        });
-      }
-    }
-
-    for (const k of OVERLAY_KEYS) {
-      const layerId = k === "canopy" ? "overlay-canopy" : k === "zoning" ? "overlay-zoning" : "overlay-flood";
-      const vis = activeKeys.includes(k) ? "visible" : "none";
-      if (map.getLayer(layerId)) map.setLayoutProperty(layerId, "visibility", vis);
-      if (map.getLayer(`${layerId}-outline`)) map.setLayoutProperty(`${layerId}-outline`, "visibility", vis);
-    }
-  }, []);
-
-  const syncAir = useCallback(async (active: boolean) => {
-    const map = mapRef.current;
-    if (!map?.isStyleLoaded()) return;
-    if (active) {
-      if (!map.getSource("air_quality")) {
-        const data = await fetchJson<GeoJSONFC>("/layers/air_quality/geojson?city=toronto&limit=800");
-        map.addSource("air_quality", { type: "geojson", data });
-        map.addLayer({
-          id: "aq-circles",
-          type: "circle",
-          source: "air_quality",
-          layout: { visibility: "visible" },
-          paint: {
-            "circle-radius": [
-              "interpolate",
-              ["linear"],
-              ["coalesce", ["to-number", ["get", "pm25"]], 0],
-              0,
-              3,
-              80,
-              18,
-            ],
-            "circle-color": "#dc2626",
-            "circle-opacity": 0.55,
-            "circle-stroke-width": 1,
-            "circle-stroke-color": "#ffffff",
-          },
-        });
-      } else if (map.getLayer("aq-circles")) {
-        map.setLayoutProperty("aq-circles", "visibility", "visible");
-      }
-    } else if (map.getLayer("aq-circles")) {
-      map.setLayoutProperty("aq-circles", "visibility", "none");
-    }
-  }, []);
-
-  const syncFirms = useCallback(async (active: boolean) => {
-    const map = mapRef.current;
-    if (!map?.isStyleLoaded()) return;
-    if (active) {
-      if (!map.getSource("firms")) {
-        const data = await fetchJson<GeoJSONFC>("/layers/firms/geojson?city=toronto&limit=800");
-        map.addSource("firms", { type: "geojson", data });
-        map.addLayer({
-          id: "firms-circles",
-          type: "circle",
-          source: "firms",
-          layout: { visibility: "visible" },
-          paint: {
-            "circle-radius": 4,
-            "circle-color": "#ea580c",
-            "circle-opacity": 0.85,
-            "circle-stroke-width": 1,
-            "circle-stroke-color": "#fff7ed",
-          },
-        });
-      } else if (map.getLayer("firms-circles")) {
-        map.setLayoutProperty("firms-circles", "visibility", "visible");
-      }
-    } else if (map.getLayer("firms-circles")) {
-      map.setLayoutProperty("firms-circles", "visibility", "none");
-    }
-  }, []);
-
-  const onToggle = useCallback(
-    async (id: string, active: boolean) => {
-      const next = layersRef.current.map((l) => (l.id === id ? { ...l, active } : l));
-      setLayers(next);
-
-      try {
-        setError(null);
-        if (OVERLAY_KEYS.includes(id as (typeof OVERLAY_KEYS)[number])) {
-          await syncOverlays(next);
-        } else if (id === "air_quality") {
-          await syncAir(active);
-        } else if (id === "firms") {
-          await syncFirms(active);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Layer failed to load");
-      }
-    },
-    [syncAir, syncFirms, syncOverlays],
-  );
-
+  // Init Mapbox
   useEffect(() => {
-    if (!token || !containerRef.current) return;
+    if (!mapContainerRef.current || mapRef.current) return;
+    if (!MAPBOX_TOKEN) { setMapError(true); return; }
 
-    mapboxgl.accessToken = token;
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: "mapbox://styles/mapbox/light-v11",
-      center: TORONTO_CENTER,
-      zoom: DEFAULT_ZOOM,
-    });
-    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
-    mapRef.current = map;
+    import('mapbox-gl').then(({ default: mapboxgl }) => {
+      import('mapbox-gl/dist/mapbox-gl.css');
+      mapboxgl.accessToken = MAPBOX_TOKEN;
 
-    map.on("load", async () => {
-      try {
-        const fc = await fetchJson<GeoJSONFC>("/blocks/geojson?city=toronto");
-        map.addSource("blocks", { type: "geojson", data: fc });
-        map.addLayer({
-          id: "blocks-fill",
-          type: "fill",
-          source: "blocks",
-          paint: {
-            "fill-color": [
-              "interpolate",
-              ["linear"],
-              ["coalesce", ["to-number", ["get", "vulnerability_score"]], 0],
-              0,
-              "#eff3ff",
-              25,
-              "#bdd7e7",
-              50,
-              "#6baed6",
-              75,
-              "#3182bd",
-              100,
-              "#08519c",
-            ],
-            "fill-opacity": 0.72,
-          },
-        });
-        map.addLayer({
-          id: "blocks-outline",
-          type: "line",
-          source: "blocks",
-          paint: {
-            "line-color": "#1e293b",
-            "line-opacity": 0.35,
-            "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.2, 12, 0.8],
-          },
-        });
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current!,
+        style: 'mapbox://styles/mapbox/dark-v11',
+        center: [-79.3832, 43.6532], // Toronto
+        zoom: 10.5,
+        attributionControl: false,
+      });
 
-        map.on("click", "blocks-fill", (e) => {
-          const f = e.features?.[0];
-          if (!f?.properties?.external_id) return;
-          const bid = f.id !== undefined ? String(f.id) : "";
-          const html = `
-            <div style="font-family:system-ui,sans-serif;min-width:220px">
-              <div style="font-weight:600;margin-bottom:6px">${String(f.properties?.name ?? "Area")}</div>
-              <div style="font-size:13px;color:#334155">Code: ${String(f.properties?.external_id)}</div>
-              <div style="margin-top:8px;font-size:13px">
-                Vulnerability: <strong>${String(f.properties?.vulnerability_score ?? "—")}</strong>
-              </div>
-              <div style="margin-top:4px;font-size:13px">
-                Canopy %: ${String(f.properties?.canopy_pct ?? "—")}
-              </div>
-              <div style="margin-top:4px;font-size:13px">
-                LST (°C): ${String(f.properties?.lst_mean_c ?? "—")}
-              </div>
-              ${
-                bid
-                  ? `<div style="margin-top:10px"><a style="color:#1d4ed8;font-weight:600" href="/block/${bid}">Open block detail</a></div>`
-                  : ""
-              }
-            </div>`;
-          new mapboxgl.Popup({ closeButton: true }).setLngLat(e.lngLat).setHTML(html).addTo(map);
-        });
-        map.on("mouseenter", "blocks-fill", () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-        map.on("mouseleave", "blocks-fill", () => {
-          map.getCanvas().style.cursor = "";
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load blocks");
-      }
-    });
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+      map.addControl(new mapboxgl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+
+      map.on('load', () => {
+        setMapLoaded(true);
+        // Custom map style tweaks
+        map.setPaintProperty('background', 'background-color', '#0a0f0d');
+      });
+
+      mapRef.current = map;
+    }).catch(() => setMapError(true));
 
     return () => {
-      map.remove();
+      mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [token]);
+  }, []);
 
-  if (!token) {
+  // Update markers when blocks or view changes
+  useEffect(() => {
+    if (!mapRef.current || !mapLoaded || blocks.length === 0) return;
+
+    import('mapbox-gl').then(({ default: mapboxgl }) => {
+      // Remove old markers
+      markersRef.current.forEach(m => m.remove());
+      markersRef.current = [];
+
+      blocks.forEach(block => {
+        const color = getBlockColor(block, activeView);
+        const isSelected = selectedBlock?.id === block.id;
+        const size = isSelected ? 28 : block.heatScore > 70 ? 20 : 14;
+
+        // Create custom marker element
+        const el = document.createElement('div');
+        el.style.cssText = `
+          width: ${size}px;
+          height: ${size}px;
+          border-radius: 50%;
+          background: ${color};
+          border: ${isSelected ? '3px' : '2px'} solid ${isSelected ? '#fff' : color};
+          box-shadow: 0 0 ${isSelected ? 20 : 8}px ${color}80;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          opacity: 0.9;
+        `;
+
+        // Pulse for critical zones
+        if (block.severity === 'critical' && !isSelected) {
+          el.style.animation = 'none';
+          const pulse = document.createElement('div');
+          pulse.style.cssText = `
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid ${color};
+            animation: pulse-ring 2s ease-out infinite;
+            opacity: 0.4;
+          `;
+          el.appendChild(pulse);
+        }
+
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([block.lng, block.lat])
+          .addTo(mapRef.current);
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setSelectedBlock(isSelected ? null : block);
+        });
+
+        // Tooltip on hover
+        const popup = new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+          offset: 16,
+          className: 'citylens-popup',
+        }).setHTML(`
+          <div style="
+            background: #0d1410;
+            border: 1px solid rgba(52,211,153,0.2);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-family: 'DM Mono', monospace;
+            min-width: 160px;
+          ">
+            <div style="font-weight: 500; color: #e8f5ee; font-size: 13px; margin-bottom: 4px;">${block.name}</div>
+            <div style="color: ${color}; font-size: 12px;">+${block.temperatureDelta}°C · Score ${block.heatScore}</div>
+            <div style="color: #4a6659; font-size: 11px; margin-top: 4px;">Income decile ${block.incomeDecile} · ${block.treeCanopy}% canopy</div>
+          </div>
+        `);
+
+        el.addEventListener('mouseenter', () => popup.addTo(mapRef.current).setLngLat([block.lng, block.lat]));
+        el.addEventListener('mouseleave', () => popup.remove());
+
+        markersRef.current.push(marker);
+      });
+    });
+  }, [blocks, activeView, selectedBlock, mapLoaded, setSelectedBlock]);
+
+  // Fly to selected block
+  useEffect(() => {
+    if (!mapRef.current || !selectedBlock) return;
+    mapRef.current.flyTo({
+      center: [selectedBlock.lng, selectedBlock.lat],
+      zoom: 13.5,
+      duration: 1200,
+      easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+    });
+  }, [selectedBlock]);
+
+  if (mapError) {
     return (
-      <div className="flex h-full items-center justify-center bg-zinc-100 px-6 text-center text-sm text-zinc-700">
-        <div className="max-w-md rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="font-medium text-zinc-900">Mapbox token missing</p>
-          <p className="mt-2 text-zinc-600">
-            Add <code className="rounded bg-zinc-100 px-1 py-0.5">NEXT_PUBLIC_MAPBOX_TOKEN</code> to{" "}
-            <code className="rounded bg-zinc-100 px-1 py-0.5">frontend/.env.local</code>.
-          </p>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        background: 'var(--cl-surface)',
+        gap: 16,
+        padding: 32,
+      }}>
+        <div style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 20,
+          fontWeight: 700,
+          color: 'var(--cl-text-secondary)',
+          textAlign: 'center',
+        }}>
+          Mapbox token required
         </div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--cl-text-muted)', textAlign: 'center', lineHeight: 1.8 }}>
+          Add <code style={{ color: 'var(--cl-green-400)' }}>NEXT_PUBLIC_MAPBOX_TOKEN</code><br />
+          to your <code>.env.local</code> file
+        </div>
+        {/* Fallback visual grid */}
+        <FallbackMap blocks={blocks} activeView={activeView} selectedBlock={selectedBlock} setSelectedBlock={setSelectedBlock} />
       </div>
     );
   }
 
   return (
-    <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full" />
+    <div style={{ position: 'relative', height: '100%', background: 'var(--cl-surface)' }}>
+      {/* Map container */}
+      <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
 
-      <div className="pointer-events-none absolute left-4 top-4 z-10 flex max-w-sm flex-col gap-3">
-        <div className="pointer-events-auto rounded-lg border border-zinc-200 bg-white/95 p-3 shadow-md backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Layers</p>
-          <div className="mt-2 flex flex-col gap-2">
-            {layers.map((l) => (
-              <label key={l.id} className="flex cursor-pointer items-center gap-2 text-sm text-zinc-800">
-                <input
-                  type="checkbox"
-                  checked={l.active}
-                  onChange={(e) => void onToggle(l.id, e.target.checked)}
-                  className="rounded border-zinc-300"
-                />
-                {l.label}
-              </label>
-            ))}
+      {/* Loading overlay */}
+      {(loading || !mapLoaded) && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'var(--cl-surface)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: '50%',
+            border: '2px solid var(--cl-border)',
+            borderTopColor: 'var(--cl-green-400)',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--cl-text-muted)', letterSpacing: '0.08em' }}>
+            LOADING TORONTO DATA
           </div>
         </div>
+      )}
 
-        <div className="pointer-events-none rounded-lg border border-zinc-200 bg-white/95 p-3 shadow-md backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Vulnerability</p>
-          <div className="mt-2 flex items-center gap-2 text-xs text-zinc-700">
-            <span className="h-3 flex-1 rounded bg-gradient-to-r from-[#eff3ff] via-[#6baed6] to-[#08519c]" />
-          </div>
-          <div className="mt-1 flex justify-between text-[11px] text-zinc-500">
-            <span>Lower</span>
-            <span>Higher</span>
-          </div>
-        </div>
+      {/* Legend */}
+      <MapLegend activeView={activeView} />
 
-        {error ? (
-          <div className="pointer-events-auto rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 shadow-sm">
-            {error}
-          </div>
-        ) : null}
+      {/* Layer label */}
+      <div style={{
+        position: 'absolute',
+        top: 12, left: '50%', transform: 'translateX(-50%)',
+        background: 'rgba(13,20,16,0.85)',
+        border: '1px solid var(--cl-border-bright)',
+        borderRadius: 6,
+        padding: '4px 14px',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 11,
+        color: 'var(--cl-green-400)',
+        letterSpacing: '0.08em',
+        backdropFilter: 'blur(8px)',
+      }}>
+        {activeView.toUpperCase()} LAYER · TORONTO, ON
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse-ring {
+          0% { transform: scale(1); opacity: 0.4; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }
+        .mapboxgl-ctrl-bottom-right { margin-bottom: 12px; margin-right: 12px; }
+        .citylens-popup .mapboxgl-popup-content { background: transparent; padding: 0; border: none; box-shadow: none; }
+        .citylens-popup .mapboxgl-popup-tip { display: none; }
+      `}</style>
+    </div>
+  );
+}
+
+// ─── Legend ──────────────────────────────────────────────────────────────────
+function MapLegend({ activeView }: { activeView: ActiveView }) {
+  const legends: Record<ActiveView, { label: string; color: string }[]> = {
+    heat: [
+      { label: 'Critical (≥85)', color: '#ef4444' },
+      { label: 'High (70–84)', color: '#f97316' },
+      { label: 'Medium (55–69)', color: '#f59e0b' },
+      { label: 'Low (<55)', color: '#22c55e' },
+    ],
+    equity: [
+      { label: 'Decile 1–2 (poorest)', color: '#ef4444' },
+      { label: 'Decile 3–4', color: '#f97316' },
+      { label: 'Decile 5–6', color: '#f59e0b' },
+      { label: 'Decile 7–10', color: '#22c55e' },
+    ],
+    canopy: [
+      { label: '<10% canopy', color: '#ef4444' },
+      { label: '10–20%', color: '#fbbf24' },
+      { label: '20–30%', color: '#86efac' },
+      { label: '>30%', color: '#15803d' },
+    ],
+    flood: [
+      { label: 'High risk', color: '#ef4444' },
+      { label: 'Medium risk', color: '#f59e0b' },
+      { label: 'Low risk', color: '#22c55e' },
+    ],
+    aqi: [
+      { label: 'Unhealthy (>130)', color: '#ef4444' },
+      { label: 'Moderate (100–130)', color: '#f59e0b' },
+      { label: 'Good (<100)', color: '#22c55e' },
+    ],
+  };
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: 40,
+      left: 12,
+      background: 'rgba(13,20,16,0.9)',
+      border: '1px solid var(--cl-border)',
+      borderRadius: 8,
+      padding: '10px 14px',
+      backdropFilter: 'blur(8px)',
+    }}>
+      {legends[activeView].map((item) => (
+        <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--cl-text-secondary)' }}>{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Fallback grid map (no Mapbox token) ─────────────────────────────────────
+function FallbackMap({ blocks, activeView, selectedBlock, setSelectedBlock }: {
+  blocks: Block[];
+  activeView: ActiveView;
+  selectedBlock: Block | null;
+  setSelectedBlock: (b: Block | null) => void;
+}) {
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(4, 1fr)',
+      gap: 6,
+      padding: 16,
+      maxWidth: 500,
+      width: '100%',
+    }}>
+      {blocks.map(block => {
+        const color = getBlockColor(block, activeView);
+        const isSelected = selectedBlock?.id === block.id;
+        return (
+          <div
+            key={block.id}
+            onClick={() => setSelectedBlock(isSelected ? null : block)}
+            style={{
+              aspectRatio: '1',
+              borderRadius: 8,
+              background: `${color}22`,
+              border: `2px solid ${isSelected ? '#fff' : color}`,
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 4,
+              transition: 'var(--transition)',
+            }}
+          >
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color, fontWeight: 500, textAlign: 'center', lineHeight: 1.2 }}>
+              {block.name.split(' ')[0]}
+            </div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, color, fontWeight: 700 }}>
+              {block.heatScore}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
