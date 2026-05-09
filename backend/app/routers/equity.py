@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import PlainTextResponse
@@ -12,6 +13,8 @@ from app.services.equity import summarize_equity
 
 router = APIRouter(prefix="/equity", tags=["equity"])
 
+ALERT_VULN_THRESHOLD = 70  # shared constant — matches scoring.py rule-based scale
+
 
 async def _city_id(conn, slug: str) -> UUID:
     row = await conn.fetchrow("SELECT id FROM cities WHERE slug = $1", slug)
@@ -20,16 +23,7 @@ async def _city_id(conn, slug: str) -> UUID:
     return row["id"]
 
 
-@router.get("/report")
-async def equity_report(
-    conn: DbConn,
-    city: str = Query("toronto"),
-    export_format: str = Query("json", pattern="^(json|csv)$"),
-) -> Any:
-    """
-    Equity summary from latest snapshots joined with block/demographics context.
-    """
-    cid = await _city_id(conn, city)
+async def _equity_blocks(conn, cid: UUID) -> list[dict[str, Any]]:
     rows = await conn.fetch(
         """
         SELECT b.id::text AS block_id, b.external_id, b.name,
@@ -49,7 +43,18 @@ async def equity_report(
         """,
         cid,
     )
-    blocks = [dict(r) for r in rows]
+    return [dict(r) for r in rows]
+
+
+@router.get("/report")
+async def equity_report(
+    conn: DbConn,
+    city: str = Query("toronto"),
+    export_format: str = Query("json", pattern="^(json|csv)$"),
+) -> Any:
+    """Equity summary from latest snapshots joined with block/demographics context."""
+    cid = await _city_id(conn, city)
+    blocks = await _equity_blocks(conn, cid)
     summary = summarize_equity(blocks)
 
     alerts = [
@@ -57,8 +62,8 @@ async def equity_report(
         for b in blocks
         if b.get("alert_under_resourced")
         or (
-            (b.get("vulnerability_score") or 0) >= 70
-            and (b.get("low_income_flag") is True)
+            (b.get("vulnerability_score") or 0) >= ALERT_VULN_THRESHOLD
+            and b.get("low_income_flag") is True
             and (b.get("resources_deployed") or 0) < settings.equity_alert_threshold
         )
     ]
@@ -81,4 +86,48 @@ async def equity_report(
         "summary": summary,
         "alerts": alerts,
         "blocks": blocks,
+    }
+
+
+@router.get("/score")
+async def equity_score(
+    conn: DbConn,
+    city: str = Query("toronto"),
+) -> dict[str, Any]:
+    """
+    Lightweight equity score for dashboard panels.
+    Returns a 0-100 score and a breakdown by dimension.
+    """
+    cid = await _city_id(conn, city)
+    blocks = await _equity_blocks(conn, cid)
+    summary = summarize_equity(blocks)
+
+    raw_score = summary.get("equity_score")
+    # equity_score from summarize_equity is 0–1; convert to 0–100 for the UI
+    score_100 = round(float(raw_score) * 100) if raw_score is not None else 0
+
+    low_income = [b for b in blocks if b.get("low_income_flag")]
+    total = len(blocks) or 1
+
+    mean_deploy = float(summary.get("mean_deploy_low_income") or 0)
+    mean_vuln = float(summary.get("mean_vuln_low_income") or 0)
+    under_resourced = int(summary.get("under_resourced_alerts") or 0)
+
+    # Coverage: what fraction of low-income blocks have any resources deployed
+    covered = sum(1 for b in low_income if (b.get("resources_deployed") or 0) > 0)
+    low_income_coverage = round(covered / max(len(low_income), 1) * 100)
+
+    return {
+        "score": score_100,
+        "breakdown": {
+            "investment": round(mean_deploy * 100),
+            "vulnerability": round(mean_vuln),
+            "low_income_coverage": low_income_coverage,
+            "under_resourced_pct": round(under_resourced / max(len(low_income), 1) * 100),
+        },
+        "meta": {
+            "low_income_blocks": len(low_income),
+            "total_blocks": total,
+            "under_resourced_alerts": under_resourced,
+        },
     }

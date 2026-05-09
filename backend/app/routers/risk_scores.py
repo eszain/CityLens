@@ -53,7 +53,7 @@ async def get_risk_scores(
     if blocks_df.empty:
         return []
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     city_ts = await loop.run_in_executor(None, build_city_timeseries, hotspots_df, air_df)
     forecast_df = await loop.run_in_executor(None, run_heat_forecast, city_ts)

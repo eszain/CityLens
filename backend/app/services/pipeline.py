@@ -247,13 +247,13 @@ def compute_risk_scores(
     w_pm25 = feature_weights.get("pm25", 0.20)
 
     if forecast_df is not None and not forecast_df.empty and "brightness_temp" in forecast_df.columns:
-        peak_temp = float(forecast_df["brightness_temp"].max())
-        base_temp = float(forecast_df["brightness_temp"].min())
+        # Normalise the forecast within its own range (avoids Kelvin vs °C comparison).
+        # forecast_peak_normalized = how elevated the peak is relative to the forecast swing.
+        fc_vals = forecast_df["brightness_temp"].dropna()
+        peak_temp = float(fc_vals.max())
+        base_temp = float(fc_vals.min())
         peak_range = max(peak_temp - base_temp, 0.01)
-        current_mean = float(df["lst_mean_c"].median() or 300.0)
-        forecast_peak_normalized = float(
-            min(1.0, max(0.0, (peak_temp - current_mean) / peak_range))
-        )
+        forecast_peak_normalized = float(min(1.0, max(0.0, (peak_temp - base_temp) / peak_range)))
 
         df["forecast_peak_normalized"] = forecast_peak_normalized
         df["forecast_peak_temp_k"] = peak_temp

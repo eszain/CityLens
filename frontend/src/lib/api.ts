@@ -36,7 +36,9 @@ type ApiBlockRow = {
   lat: number | null;
   lng: number | null;
   low_income_flag: boolean | null;
+  income_median_cad: number | null;
   population: number | null;
+  pm25: number | null;
 };
 
 type ApiBlocksList = { items: ApiBlockRow[]; total: number };
@@ -69,6 +71,28 @@ function severityFromVulnerability(score: number): HeatSeverity {
   return 'low';
 }
 
+/**
+ * Approximate income decile (1=lowest, 10=highest) from median income.
+ * Toronto median household income ~$84k CAD (2021 census).
+ * Falls back to low_income_flag when income_median_cad is unavailable.
+ */
+function incomeDecileFromMedian(medianCad: number | null, lowIncomeFlag: boolean | null): number {
+  if (medianCad != null) {
+    const income = Number(medianCad);
+    if (income < 40_000) return 1;
+    if (income < 55_000) return 2;
+    if (income < 65_000) return 3;
+    if (income < 72_000) return 4;
+    if (income < 80_000) return 5;
+    if (income < 90_000) return 6;
+    if (income < 105_000) return 7;
+    if (income < 125_000) return 8;
+    if (income < 160_000) return 9;
+    return 10;
+  }
+  return lowIncomeFlag ? 2 : 6;
+}
+
 function mapApiBlockRow(row: ApiBlockRow): Block {
   const heatScore = Math.round(Number(row.vulnerability_score ?? 0));
   const lst = row.lst_mean_c != null ? Number(row.lst_mean_c) : null;
@@ -84,12 +108,12 @@ function mapApiBlockRow(row: ApiBlockRow): Block {
     heatScore,
     temperatureDelta,
     severity: severityFromVulnerability(heatScore),
-    incomeDecile: row.low_income_flag ? 2 : 5,
+    incomeDecile: incomeDecileFromMedian(row.income_median_cad, row.low_income_flag),
     treeCanopy: Math.round(Number(row.canopy_pct ?? 0)),
     impervious: 0,
     population: row.population ?? 0,
     interventions: [],
-    airQualityIndex: 50,
+    airQualityIndex: row.pm25 != null ? Math.round(Number(row.pm25)) : 50,
     floodRisk: 'low',
   };
 }
@@ -129,7 +153,7 @@ export async function fetchBlocks(demo: boolean): Promise<Block[]> {
     await delay(600);
     return DEMO_BLOCKS;
   }
-  const data = await fetchJson<ApiBlocksList>('/blocks/?city=toronto&limit=5000');
+  const data = await fetchJson<ApiBlocksList>('/blocks?city=toronto&limit=5000');
   return (data.items ?? []).map(mapApiBlockRow);
 }
 
@@ -140,7 +164,9 @@ export async function fetchBlock(id: string, demo: boolean): Promise<Block> {
     if (!b) throw new Error('Block not found');
     return b;
   }
-  return fetchJson<Block>(`/blocks/${id}`);
+  // Backend detail shape is richer than the list row — map to Block
+  const row = await fetchJson<ApiBlockRow & { pm25?: number | null }>(`/blocks/${id}?city=toronto`);
+  return mapApiBlockRow(row);
 }
 
 // ─── Work orders ─────────────────────────────────────────────────────────────
@@ -149,7 +175,7 @@ export async function fetchWorkOrders(demo: boolean): Promise<WorkOrder[]> {
     await delay(400);
     return DEMO_WORK_ORDERS;
   }
-  const data = await fetchJson<ApiWorkOrdersList>('/work-orders/?city=toronto&limit=2000');
+  const data = await fetchJson<ApiWorkOrdersList>('/work-orders?city=toronto&limit=2000');
   return (data.items ?? []).map((wo) => ({
     id: wo.id,
     blockId: wo.block_id ?? '',
@@ -238,10 +264,11 @@ export async function fetchEquityScore(demo: boolean): Promise<{ score: number; 
     await delay(300);
     return {
       score: 34,
-      breakdown: { responseTime: 28, investment: 22, canopy: 41, workOrders: 45 },
+      breakdown: { investment: 22, vulnerability: 68, low_income_coverage: 41, under_resourced_pct: 31 },
     };
   }
-  return fetchJson('/equity/score');
+  const data = await fetchJson<{ score: number; breakdown: Record<string, number> }>('/equity/score?city=toronto');
+  return data;
 }
 
 // ─── City stats ───────────────────────────────────────────────────────────────
@@ -314,11 +341,13 @@ export async function triggerScoring(blockId: string, demo: boolean): Promise<{ 
     await delay(1200);
     return { jobId: `job-${Date.now()}`, eta: 5 };
   }
-  const res = await fetch(`${API_BASE}/interventions/score`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ block_id: blockId }),
-  });
+  // Backend exposes GET /interventions/score?block_id=... (not POST)
+  const res = await fetch(
+    `${API_BASE}/interventions/score?block_id=${encodeURIComponent(blockId)}&city=toronto`,
+    { headers: { 'Content-Type': 'application/json' } },
+  );
   if (!res.ok) throw new Error('Scoring failed');
-  return res.json();
+  const data = await res.json() as { block_id: string; interventions: unknown[] };
+  // Adapt to the expected shape — rescoring is instant server-side
+  return { jobId: data.block_id, eta: 0 };
 }
