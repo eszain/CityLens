@@ -5,10 +5,10 @@ import { CityLensLogo } from '@/components/CityLensLogo';
 import { useDemoMode } from '@/components/DemoProvider';
 
 const STATS = [
-  { value: '5–8°C', label: 'hotter in low-income zones' },
+  { value: '5-8°C', label: 'hotter in low-income zones' },
+  { value: '5 lenses', label: 'heat · equity · canopy · flood · air' },
   { value: '467K+', label: 'people at risk in Toronto' },
   { value: '3×', label: 'less tree canopy in poor blocks' },
-  { value: 'Zero', label: 'real-time maps existed — until now' },
 ];
 
 const SDGS = ['SDG 10', 'SDG 11', 'SDG 13'];
@@ -146,9 +146,9 @@ export function LandingView() {
           marginBottom: 24,
           maxWidth: 900,
         }}>
-          <span style={{ color: 'var(--cl-text-primary)' }}>The city</span>
+          <span style={{ color: 'var(--cl-text-primary)' }}>See the city through</span>
           <br />
-          <span style={{ color: 'var(--cl-green-800)', fontStyle: 'italic' }}>holds heat unevenly.</span>
+          <span style={{ color: 'var(--cl-green-800)', fontStyle: 'italic' }}>every lens that matters.</span>
         </h1>
 
         <p style={{
@@ -159,8 +159,8 @@ export function LandingView() {
           marginBottom: 48,
           fontWeight: 300,
         }}>
-          Low-income neighbourhoods are often <strong style={{ color: 'var(--cl-heat-700)', fontWeight: 600 }}>5–8°C warmer</strong> than wealthier areas.
-          CityLens helps teams see that gap clearly — and coordinate a fairer response.
+          Low-income neighbourhoods are often <strong style={{ color: 'var(--cl-heat-700)', fontWeight: 600 }}>5-8°C warmer</strong> than wealthier areas - and the same blocks shoulder higher flood risk, worse air, and thinner canopy - with equity gaps that line up.
+          {' '}CityLens helps teams see those gaps clearly and coordinate a fairer response.
         </p>
 
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -255,10 +255,10 @@ export function LandingView() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, maxWidth: 1200, margin: '0 auto' }}>
           {[
-            { step: '01', title: 'Ingest', desc: 'watsonx.data unifies thermal satellite imagery, IoT sensors, tree canopy, and zoning into a lakehouse.' },
-            { step: '02', title: 'Score', desc: 'watsonx.ai runs a heat vulnerability model — scoring each city block and ranking interventions by cost-effectiveness.' },
+            { step: '01', title: 'Ingest', desc: 'watsonx.data unifies thermal imagery, canopy, zoning, flood surfaces, air-quality feeds, and IoT signals into a lakehouse.' },
+            { step: '02', title: 'Score', desc: 'watsonx.ai scores each block across heat vulnerability and related environmental risk - ranking interventions by cost-effectiveness.' },
             { step: '03', title: 'Automate', desc: 'watsonx Orchestrate detects anomalies and routes intervention briefs to the correct city department automatically.' },
-            { step: '04', title: 'Monitor', desc: 'watsonx.governance audits whether resources reach low-income zones equitably — flagging disparity in real time.' },
+            { step: '04', title: 'Monitor', desc: 'watsonx.governance audits whether resources reach low-income zones equitably - flagging disparity in real time.' },
           ].map((item) => (
             <div key={item.step} style={{
               background: 'var(--cl-card)',
@@ -298,7 +298,7 @@ export function LandingView() {
           CityLens · IBM × UNSA Hackathon 2026
         </span>
         <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--cl-text-muted)' }}>
-          Built for climate equity
+          Built for urban & environmental equity
         </span>
       </footer>
     </main>

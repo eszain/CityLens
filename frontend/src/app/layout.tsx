@@ -3,12 +3,14 @@ import './globals.css';
 import { DemoProvider } from '@/components/DemoProvider';
 
 export const metadata: Metadata = {
-  title: 'CityLens — Urban Heat Intelligence',
-  description: 'Real-time urban heat island monitoring for climate justice. SDG 11 · SDG 13 · SDG 10',
-  icons: { icon: '/favicon.ico' },
+  title: 'CityLens',
+  description:
+    'Block-level mapping for heat, equity, canopy, flood risk, and air quality — aligned with climate justice. SDG 11 · SDG 13 · SDG 10',
+  icons: { icon: [{ url: '/logo.png', type: 'image/png' }] },
   openGraph: {
     title: 'CityLens',
-    description: 'AI-powered heat vulnerability mapping for equitable cities.',
+    description:
+      'Multi-lens urban mapping: heat vulnerability, tree canopy, flood risk, air quality, and income equity on one map.',
     type: 'website',
   },
 };
