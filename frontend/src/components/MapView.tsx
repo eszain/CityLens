@@ -2,9 +2,11 @@
 
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { Layers as LayersIcon, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchJson } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
 type LayerToggle = {
   id: string;
@@ -14,15 +16,16 @@ type LayerToggle = {
 
 type GeoJSONFC = GeoJSON.FeatureCollection;
 
-const TORONTO_CENTER: [number, number] = [-79.38, 43.71];
-const DEFAULT_ZOOM = 10.2;
+const TORONTO_CENTER: [number, number] = [-79.3832, 43.6532];
+const DEFAULT_ZOOM = 15.5;
 
 const OVERLAY_KEYS = ["canopy", "zoning", "flood_risk"] as const;
 
-export default function MapView() {
+export default function MapView({ leftPanelOpen = false }: { leftPanelOpen?: boolean }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [layersOpen, setLayersOpen] = useState(false);
   const layersRef = useRef<LayerToggle[]>([]);
   const [layers, setLayers] = useState<LayerToggle[]>([
     { id: "canopy", label: "Tree canopy (sample)", active: false },
@@ -58,6 +61,7 @@ export default function MapView() {
           id: d.layerId,
           type: "fill",
           source: "overlays",
+          slot: "middle",
           filter: ["==", ["get", "layer_key"], d.key],
           layout: { visibility: "none" },
           paint: { "fill-color": d.color, "fill-opacity": 0.28 },
@@ -66,6 +70,7 @@ export default function MapView() {
           id: `${d.layerId}-outline`,
           type: "line",
           source: "overlays",
+          slot: "middle",
           filter: ["==", ["get", "layer_key"], d.key],
           layout: { visibility: "none" },
           paint: { "line-color": d.color, "line-width": 1, "line-opacity": 0.7 },
@@ -92,6 +97,7 @@ export default function MapView() {
           id: "aq-circles",
           type: "circle",
           source: "air_quality",
+          slot: "top",
           layout: { visibility: "visible" },
           paint: {
             "circle-radius": [
@@ -128,6 +134,7 @@ export default function MapView() {
           id: "firms-circles",
           type: "circle",
           source: "firms",
+          slot: "top",
           layout: { visibility: "visible" },
           paint: {
             "circle-radius": 4,
@@ -172,9 +179,11 @@ export default function MapView() {
     mapboxgl.accessToken = token;
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: "mapbox://styles/mapbox/light-v11",
+      style: "mapbox://styles/mapbox/standard",
       center: TORONTO_CENTER,
       zoom: DEFAULT_ZOOM,
+      pitch: 55,
+      bearing: -17.6,
     });
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
     mapRef.current = map;
@@ -187,6 +196,7 @@ export default function MapView() {
           id: "blocks-fill",
           type: "fill",
           source: "blocks",
+          slot: "middle",
           paint: {
             "fill-color": [
               "interpolate",
@@ -210,6 +220,7 @@ export default function MapView() {
           id: "blocks-outline",
           type: "line",
           source: "blocks",
+          slot: "middle",
           paint: {
             "line-color": "#1e293b",
             "line-opacity": 0.35,
@@ -277,34 +288,58 @@ export default function MapView() {
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
 
-      <div className="pointer-events-none absolute left-4 top-4 z-10 flex max-w-sm flex-col gap-3">
-        <div className="pointer-events-auto rounded-lg border border-zinc-200 bg-white/95 p-3 shadow-md backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Layers</p>
-          <div className="mt-2 flex flex-col gap-2">
-            {layers.map((l) => (
-              <label key={l.id} className="flex cursor-pointer items-center gap-2 text-sm text-zinc-800">
-                <input
-                  type="checkbox"
-                  checked={l.active}
-                  onChange={(e) => void onToggle(l.id, e.target.checked)}
-                  className="rounded border-zinc-300"
-                />
-                {l.label}
-              </label>
-            ))}
+      <div
+        className="pointer-events-none absolute top-4 z-10 flex max-w-sm flex-col gap-3 transition-[left] duration-300 ease-out"
+        style={{ left: leftPanelOpen ? "336px" : "56px" }}
+      >
+        {layersOpen ? (
+          <div className="pointer-events-auto rounded-lg border border-zinc-200 bg-white/95 p-3 shadow-md backdrop-blur">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Layers</p>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => setLayersOpen(false)}
+                aria-label="Collapse layers"
+              >
+                <X size={14} />
+              </Button>
+            </div>
+            <div className="mt-2 flex flex-col gap-2">
+              {layers.map((l) => (
+                <label key={l.id} className="flex cursor-pointer items-center gap-2 text-sm text-zinc-800">
+                  <input
+                    type="checkbox"
+                    checked={l.active}
+                    onChange={(e) => void onToggle(l.id, e.target.checked)}
+                    className="rounded border-zinc-300"
+                  />
+                  {l.label}
+                </label>
+              ))}
+            </div>
+            <div className="mt-3 border-t border-zinc-200 pt-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Vulnerability</p>
+              <div className="mt-2 flex items-center gap-2 text-xs text-zinc-700">
+                <span className="h-3 flex-1 rounded bg-gradient-to-r from-[#eff3ff] via-[#6baed6] to-[#08519c]" />
+              </div>
+              <div className="mt-1 flex justify-between text-[11px] text-zinc-500">
+                <span>Lower</span>
+                <span>Higher</span>
+              </div>
+            </div>
           </div>
-        </div>
-
-        <div className="pointer-events-none rounded-lg border border-zinc-200 bg-white/95 p-3 shadow-md backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Vulnerability</p>
-          <div className="mt-2 flex items-center gap-2 text-xs text-zinc-700">
-            <span className="h-3 flex-1 rounded bg-gradient-to-r from-[#eff3ff] via-[#6baed6] to-[#08519c]" />
-          </div>
-          <div className="mt-1 flex justify-between text-[11px] text-zinc-500">
-            <span>Lower</span>
-            <span>Higher</span>
-          </div>
-        </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setLayersOpen(true)}
+            aria-label="Open layers"
+            className="pointer-events-auto h-10 w-10 bg-white/95 shadow-md backdrop-blur hover:bg-white"
+          >
+            <LayersIcon size={18} />
+          </Button>
+        )}
 
         {error ? (
           <div className="pointer-events-auto rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 shadow-sm">
