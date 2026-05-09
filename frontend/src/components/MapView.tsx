@@ -6,39 +6,39 @@ import type { ActiveView, Block } from '@/types';
 // Mapbox token — set in .env.local as NEXT_PUBLIC_MAPBOX_TOKEN
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? '';
 
-// Heat color scale
+// Heat color scale (muted, earth-adjacent)
 function heatColor(score: number): string {
-  if (score >= 85) return '#ef4444';
-  if (score >= 70) return '#f97316';
-  if (score >= 55) return '#f59e0b';
-  if (score >= 35) return '#84cc16';
-  return '#22c55e';
+  if (score >= 85) return '#a84840';
+  if (score >= 70) return '#b8673d';
+  if (score >= 55) return '#b8876e';
+  if (score >= 35) return '#9faa7d';
+  return '#6d8069';
 }
 
 // Equity color (inverse of income decile)
 function equityColor(decile: number): string {
-  if (decile <= 2) return '#ef4444';
-  if (decile <= 4) return '#f97316';
-  if (decile <= 6) return '#f59e0b';
-  if (decile <= 8) return '#84cc16';
-  return '#22c55e';
+  if (decile <= 2) return '#a84840';
+  if (decile <= 4) return '#b8673d';
+  if (decile <= 6) return '#b8876e';
+  if (decile <= 8) return '#9faa7d';
+  return '#6d8069';
 }
 
 // Canopy color
 function canopyColor(pct: number): string {
-  if (pct >= 50) return '#15803d';
-  if (pct >= 30) return '#22c55e';
-  if (pct >= 20) return '#86efac';
-  if (pct >= 10) return '#fbbf24';
-  return '#ef4444';
+  if (pct >= 50) return '#3d5242';
+  if (pct >= 30) return '#536456';
+  if (pct >= 20) return '#87977a';
+  if (pct >= 10) return '#cdb09a';
+  return '#a84840';
 }
 
 function getBlockColor(block: Block, view: ActiveView): string {
   switch (view) {
     case 'equity': return equityColor(block.incomeDecile);
     case 'canopy': return canopyColor(block.treeCanopy);
-    case 'flood': return block.floodRisk === 'high' ? '#ef4444' : block.floodRisk === 'medium' ? '#f59e0b' : '#22c55e';
-    case 'aqi': return block.airQualityIndex > 130 ? '#ef4444' : block.airQualityIndex > 100 ? '#f59e0b' : '#22c55e';
+    case 'flood': return block.floodRisk === 'high' ? '#a84840' : block.floodRisk === 'medium' ? '#b8876e' : '#6d8069';
+    case 'aqi': return block.airQualityIndex > 130 ? '#a84840' : block.airQualityIndex > 100 ? '#b8876e' : '#6d8069';
     default: return heatColor(block.heatScore);
   }
 }
@@ -69,7 +69,7 @@ export function MapView({ blocks, selectedBlock, setSelectedBlock, activeView, l
 
       const map = new mapboxgl.Map({
         container: mapContainerRef.current!,
-        style: 'mapbox://styles/mapbox/dark-v11',
+        style: 'mapbox://styles/mapbox/light-v11',
         center: [-79.3832, 43.6532], // Toronto
         zoom: 10.5,
         attributionControl: false,
@@ -81,7 +81,7 @@ export function MapView({ blocks, selectedBlock, setSelectedBlock, activeView, l
       map.on('load', () => {
         setMapLoaded(true);
         // Custom map style tweaks
-        map.setPaintProperty('background', 'background-color', '#0a0f0d');
+        map.setPaintProperty('background', 'background-color', '#e8e4dc');
       });
 
       mapRef.current = map;
@@ -153,16 +153,17 @@ export function MapView({ blocks, selectedBlock, setSelectedBlock, activeView, l
           className: 'citylens-popup',
         }).setHTML(`
           <div style="
-            background: #0d1410;
-            border: 1px solid rgba(52,211,153,0.2);
-            border-radius: 8px;
+            background: #fdfcfa;
+            border: 1px solid rgba(55,48,40,0.12);
+            border-radius: 10px;
             padding: 10px 14px;
-            font-family: 'DM Mono', monospace;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             min-width: 160px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
           ">
-            <div style="font-weight: 500; color: #e8f5ee; font-size: 13px; margin-bottom: 4px;">${block.name}</div>
-            <div style="color: ${color}; font-size: 12px;">+${block.temperatureDelta}°C · Score ${block.heatScore}</div>
-            <div style="color: #4a6659; font-size: 11px; margin-top: 4px;">Income decile ${block.incomeDecile} · ${block.treeCanopy}% canopy</div>
+            <div style="font-weight: 600; color: #2a2621; font-size: 14px; margin-bottom: 4px;">${block.name}</div>
+            <div style="color: ${color}; font-size: 13px;">+${block.temperatureDelta}°C · Score ${block.heatScore}</div>
+            <div style="color: #8c8478; font-size: 12px; margin-top: 4px;">Income decile ${block.incomeDecile} · ${block.treeCanopy}% canopy</div>
           </div>
         `);
 
@@ -206,8 +207,8 @@ export function MapView({ blocks, selectedBlock, setSelectedBlock, activeView, l
         }}>
           Mapbox token required
         </div>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--cl-text-muted)', textAlign: 'center', lineHeight: 1.8 }}>
-          Add <code style={{ color: 'var(--cl-green-400)' }}>NEXT_PUBLIC_MAPBOX_TOKEN</code><br />
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--cl-text-muted)', textAlign: 'center', lineHeight: 1.8 }}>
+          Add <code style={{ color: 'var(--cl-green-800)' }}>NEXT_PUBLIC_MAPBOX_TOKEN</code><br />
           to your <code>.env.local</code> file
         </div>
         {/* Fallback visual grid */}
@@ -239,8 +240,8 @@ export function MapView({ blocks, selectedBlock, setSelectedBlock, activeView, l
             borderTopColor: 'var(--cl-green-400)',
             animation: 'spin 0.8s linear infinite',
           }} />
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--cl-text-muted)', letterSpacing: '0.08em' }}>
-            LOADING TORONTO DATA
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--cl-text-muted)', fontWeight: 500 }}>
+            Loading Toronto data…
           </div>
         </div>
       )}
@@ -252,17 +253,17 @@ export function MapView({ blocks, selectedBlock, setSelectedBlock, activeView, l
       <div style={{
         position: 'absolute',
         top: 12, left: '50%', transform: 'translateX(-50%)',
-        background: 'rgba(13,20,16,0.85)',
-        border: '1px solid var(--cl-border-bright)',
-        borderRadius: 6,
-        padding: '4px 14px',
-        fontFamily: 'var(--font-mono)',
-        fontSize: 11,
-        color: 'var(--cl-green-400)',
-        letterSpacing: '0.08em',
-        backdropFilter: 'blur(8px)',
+        background: 'var(--cl-map-overlay)',
+        border: '1px solid var(--cl-map-overlay-border)',
+        borderRadius: 10,
+        padding: '6px 16px',
+        fontFamily: 'var(--font-body)',
+        fontSize: 13,
+        color: '#e8e2d6',
+        fontWeight: 500,
+        backdropFilter: 'blur(10px)',
       }}>
-        {activeView.toUpperCase()} LAYER · TORONTO, ON
+        {activeView.charAt(0).toUpperCase() + activeView.slice(1)} layer · Toronto, ON
       </div>
 
       <style>{`
@@ -283,32 +284,32 @@ export function MapView({ blocks, selectedBlock, setSelectedBlock, activeView, l
 function MapLegend({ activeView }: { activeView: ActiveView }) {
   const legends: Record<ActiveView, { label: string; color: string }[]> = {
     heat: [
-      { label: 'Critical (≥85)', color: '#ef4444' },
-      { label: 'High (70–84)', color: '#f97316' },
-      { label: 'Medium (55–69)', color: '#f59e0b' },
-      { label: 'Low (<55)', color: '#22c55e' },
+      { label: 'Critical (≥85)', color: '#a84840' },
+      { label: 'High (70–84)', color: '#b8673d' },
+      { label: 'Medium (55–69)', color: '#b8876e' },
+      { label: 'Low (<55)', color: '#6d8069' },
     ],
     equity: [
-      { label: 'Decile 1–2 (poorest)', color: '#ef4444' },
-      { label: 'Decile 3–4', color: '#f97316' },
-      { label: 'Decile 5–6', color: '#f59e0b' },
-      { label: 'Decile 7–10', color: '#22c55e' },
+      { label: 'Decile 1–2 (poorest)', color: '#a84840' },
+      { label: 'Decile 3–4', color: '#b8673d' },
+      { label: 'Decile 5–6', color: '#b8876e' },
+      { label: 'Decile 7–10', color: '#6d8069' },
     ],
     canopy: [
-      { label: '<10% canopy', color: '#ef4444' },
-      { label: '10–20%', color: '#fbbf24' },
-      { label: '20–30%', color: '#86efac' },
-      { label: '>30%', color: '#15803d' },
+      { label: '<10% canopy', color: '#a84840' },
+      { label: '10–20%', color: '#cdb09a' },
+      { label: '20–30%', color: '#87977a' },
+      { label: '>30%', color: '#3d5242' },
     ],
     flood: [
-      { label: 'High risk', color: '#ef4444' },
-      { label: 'Medium risk', color: '#f59e0b' },
-      { label: 'Low risk', color: '#22c55e' },
+      { label: 'High risk', color: '#a84840' },
+      { label: 'Medium risk', color: '#b8876e' },
+      { label: 'Low risk', color: '#6d8069' },
     ],
     aqi: [
-      { label: 'Unhealthy (>130)', color: '#ef4444' },
-      { label: 'Moderate (100–130)', color: '#f59e0b' },
-      { label: 'Good (<100)', color: '#22c55e' },
+      { label: 'Unhealthy (>130)', color: '#a84840' },
+      { label: 'Moderate (100–130)', color: '#b8876e' },
+      { label: 'Good (<100)', color: '#6d8069' },
     ],
   };
 
@@ -317,16 +318,16 @@ function MapLegend({ activeView }: { activeView: ActiveView }) {
       position: 'absolute',
       bottom: 40,
       left: 12,
-      background: 'rgba(13,20,16,0.9)',
-      border: '1px solid var(--cl-border)',
-      borderRadius: 8,
-      padding: '10px 14px',
-      backdropFilter: 'blur(8px)',
+      background: 'var(--cl-map-overlay)',
+      border: '1px solid var(--cl-map-overlay-border)',
+      borderRadius: 12,
+      padding: '12px 16px',
+      backdropFilter: 'blur(10px)',
     }}>
       {legends[activeView].map((item) => (
         <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--cl-text-secondary)' }}>{item.label}</span>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#d4cfc4' }}>{item.label}</span>
         </div>
       ))}
     </div>
@@ -360,7 +361,7 @@ function FallbackMap({ blocks, activeView, selectedBlock, setSelectedBlock }: {
               aspectRatio: '1',
               borderRadius: 8,
               background: `${color}22`,
-              border: `2px solid ${isSelected ? '#fff' : color}`,
+              border: `2px solid ${isSelected ? 'var(--cl-text-primary)' : color}`,
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',

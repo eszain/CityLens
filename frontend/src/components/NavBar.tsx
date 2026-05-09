@@ -3,14 +3,15 @@
 import Link from 'next/link';
 import type { CityStats } from '@/types';
 import type { ActiveView } from '@/types';
+import { CityLensLogo } from '@/components/CityLensLogo';
 import { useDemoMode } from '@/components/DemoProvider';
 
-const VIEWS: { id: ActiveView; label: string; icon: string }[] = [
-  { id: 'heat',   label: 'Heat',   icon: '🌡' },
-  { id: 'equity', label: 'Equity', icon: '⚖' },
-  { id: 'canopy', label: 'Canopy', icon: '🌳' },
-  { id: 'flood',  label: 'Flood',  icon: '💧' },
-  { id: 'aqi',    label: 'AQI',    icon: '💨' },
+const VIEWS: { id: ActiveView; label: string }[] = [
+  { id: 'heat', label: 'Heat' },
+  { id: 'equity', label: 'Equity' },
+  { id: 'canopy', label: 'Canopy' },
+  { id: 'flood', label: 'Flood' },
+  { id: 'aqi', label: 'Air' },
 ];
 
 interface Props {
@@ -37,16 +38,20 @@ export function NavBar({ activeView, setActiveView, cityStats, onRefresh }: Prop
     }}>
       {/* Logo */}
       <Link href="/" style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
         fontFamily: 'var(--font-display)',
         fontSize: 16,
-        fontWeight: 800,
+        fontWeight: 700,
         color: 'var(--cl-text-primary)',
         textDecoration: 'none',
         marginRight: 24,
         letterSpacing: '-0.02em',
         whiteSpace: 'nowrap',
       }}>
-        City<span style={{ color: 'var(--cl-green-400)' }}>Lens</span>
+        <CityLensLogo size={26} />
+        City<span style={{ color: 'var(--cl-green-800)' }}>Lens</span>
       </Link>
 
       {/* Layer switcher */}
@@ -71,9 +76,9 @@ export function NavBar({ activeView, setActiveView, cityStats, onRefresh }: Prop
             letterSpacing: '0.01em',
             transition: 'var(--transition)',
             background: activeView === v.id ? 'var(--cl-green-700)' : 'transparent',
-            color: activeView === v.id ? 'var(--cl-green-300)' : 'var(--cl-text-muted)',
+            color: activeView === v.id ? 'var(--cl-on-accent)' : 'var(--cl-text-muted)',
           }}>
-            {v.icon} {v.label}
+            {v.label}
           </button>
         ))}
       </div>
@@ -81,9 +86,9 @@ export function NavBar({ activeView, setActiveView, cityStats, onRefresh }: Prop
       {/* Live stats */}
       {cityStats && (
         <div style={{ display: 'flex', gap: 20, margin: '0 20px' }}>
-          <Stat label="CRITICAL" value={cityStats.criticalZones} color="var(--cl-red-400)" />
-          <Stat label="AVG ΔT" value={`+${cityStats.avgTemperatureDelta}°C`} color="var(--cl-heat-400)" />
-          <Stat label="EQUITY" value={`${cityStats.equityScore}/100`} color={cityStats.equityScore < 50 ? 'var(--cl-red-400)' : 'var(--cl-green-400)'} />
+          <Stat label="Critical" value={cityStats.criticalZones} color="var(--cl-red-400)" />
+          <Stat label="Avg Δ°C" value={`+${cityStats.avgTemperatureDelta}°C`} color="var(--cl-heat-700)" />
+          <Stat label="Equity" value={`${cityStats.equityScore}/100`} color={cityStats.equityScore < 50 ? 'var(--cl-red-400)' : 'var(--cl-green-800)'} />
         </div>
       )}
 
@@ -95,16 +100,16 @@ export function NavBar({ activeView, setActiveView, cityStats, onRefresh }: Prop
         color: 'var(--cl-text-muted)',
         padding: '4px 10px',
         cursor: 'pointer',
-        fontFamily: 'var(--font-mono)',
-        fontSize: 11,
+        fontFamily: 'var(--font-body)',
+        fontSize: 13,
         marginRight: 12,
         transition: 'var(--transition)',
       }}>↺</button>
 
       {/* Demo toggle */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--cl-text-muted)', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>
-          DEMO
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--cl-text-muted)', whiteSpace: 'nowrap', fontWeight: 500 }}>
+          Demo
         </span>
         <button onClick={() => setDemoMode(!demoMode)} style={{
           width: 34, height: 18, borderRadius: 9,
@@ -115,7 +120,7 @@ export function NavBar({ activeView, setActiveView, cityStats, onRefresh }: Prop
           <span style={{
             position: 'absolute', top: 2, left: demoMode ? 17 : 2,
             width: 12, height: 12, borderRadius: '50%',
-            background: demoMode ? 'var(--cl-green-400)' : 'var(--cl-text-muted)',
+            background: demoMode ? 'var(--cl-on-accent)' : 'var(--cl-text-muted)',
             transition: 'var(--transition)',
           }} />
         </button>
@@ -127,7 +132,7 @@ export function NavBar({ activeView, setActiveView, cityStats, onRefresh }: Prop
 function Stat({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--cl-text-muted)', letterSpacing: '0.1em', marginBottom: 1 }}>{label}</div>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--cl-text-muted)', marginBottom: 1, fontWeight: 500 }}>{label}</div>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color, letterSpacing: '-0.02em' }}>{value}</div>
     </div>
   );

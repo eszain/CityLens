@@ -24,6 +24,8 @@ export function InfoPanel({
   demoMode,
   equityAlerts,
   workOrders,
+  activeView: _activeView,
+  setActiveView: _setActiveView,
 }: Props) {
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
@@ -83,7 +85,7 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
 }) {
   return (
     <div style={{ padding: '16px 14px' }}>
-      <SectionLabel>CRITICAL ZONES</SectionLabel>
+      <SectionLabel>High-priority areas</SectionLabel>
 
       {loading ? (
         Array.from({ length: 4 }).map((_, i) => (
@@ -108,16 +110,16 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: 'var(--cl-text-primary)' }}>{block.name}</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--cl-red-400)', fontWeight: 700 }}>{block.heatScore}</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--cl-red-400)', fontWeight: 700 }}>{block.heatScore}</span>
             </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--cl-text-muted)' }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--cl-text-muted)' }}>
               +{block.temperatureDelta}°C · Decile {block.incomeDecile} · {block.treeCanopy}% canopy
             </div>
           </button>
         ))
       )}
 
-      <SectionLabel style={{ marginTop: 20 }}>EQUITY ALERTS</SectionLabel>
+      <SectionLabel style={{ marginTop: 20 }}>Equity alerts</SectionLabel>
       {equityAlerts.slice(0, 2).map(alert => (
         <div key={alert.id} style={{
           background: 'var(--cl-card)',
@@ -127,18 +129,18 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
           marginBottom: 6,
         }}>
           <div style={{
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-body)',
             fontSize: 10,
             color: 'var(--cl-red-300)',
             lineHeight: 1.5,
           }}>{alert.message}</div>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--cl-text-muted)', marginTop: 4 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--cl-text-muted)', marginTop: 4 }}>
             +{alert.responseTimeGap}d gap vs wealthy zones
           </div>
         </div>
       ))}
 
-      <SectionLabel style={{ marginTop: 20 }}>RECENT ORDERS</SectionLabel>
+      <SectionLabel style={{ marginTop: 20 }}>Recent orders</SectionLabel>
       {workOrders.slice(0, 3).map(wo => (
         <div key={wo.id} style={{
           background: 'var(--cl-card)',
@@ -152,7 +154,7 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
         }}>
           <div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 600, color: 'var(--cl-text-primary)', marginBottom: 2 }}>{wo.blockName}</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--cl-text-muted)' }}>{wo.department}</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--cl-text-muted)' }}>{wo.department}</div>
           </div>
           <StatusBadge status={wo.status} />
         </div>
@@ -164,7 +166,7 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
         background: 'var(--cl-card)',
         border: '1px solid var(--cl-border)',
         borderRadius: 8,
-        fontFamily: 'var(--font-mono)',
+        fontFamily: 'var(--font-body)',
         fontSize: 10,
         color: 'var(--cl-text-muted)',
         lineHeight: 1.6,
@@ -195,7 +197,7 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
       {/* Back button */}
       <button onClick={onBack} style={{
         background: 'transparent', border: 'none', color: 'var(--cl-text-muted)',
-        fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer',
+        fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer',
         marginBottom: 12, padding: 0, letterSpacing: '0.05em',
       }}>← BACK</button>
 
@@ -216,7 +218,7 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
           marginBottom: 4,
           letterSpacing: '-0.01em',
         }}>{block.name}</div>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--cl-text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--cl-text-muted)', fontWeight: 500 }}>
           {block.severity} · income decile {block.incomeDecile}
         </div>
       </div>
@@ -224,12 +226,12 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
       {/* Key metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
         {[
-          { label: 'HEAT SCORE', value: block.heatScore, color: severityColor, unit: '/100' },
-          { label: 'TEMP DELTA', value: `+${block.temperatureDelta}`, color: 'var(--cl-heat-400)', unit: '°C' },
-          { label: 'TREE CANOPY', value: block.treeCanopy, color: 'var(--cl-green-400)', unit: '%' },
-          { label: 'IMPERVIOUS', value: block.impervious, color: 'var(--cl-text-secondary)', unit: '%' },
-          { label: 'POPULATION', value: block.population.toLocaleString(), color: 'var(--cl-text-secondary)', unit: '' },
-          { label: 'AQI', value: block.airQualityIndex, color: block.airQualityIndex > 130 ? 'var(--cl-red-400)' : 'var(--cl-heat-400)', unit: '' },
+          { label: 'Heat score', value: block.heatScore, color: severityColor, unit: '/100' },
+          { label: 'Temp delta', value: `+${block.temperatureDelta}`, color: 'var(--cl-heat-700)', unit: '°C' },
+          { label: 'Tree canopy', value: block.treeCanopy, color: 'var(--cl-green-800)', unit: '%' },
+          { label: 'Impervious', value: block.impervious, color: 'var(--cl-text-secondary)', unit: '%' },
+          { label: 'Population', value: block.population.toLocaleString(), color: 'var(--cl-text-secondary)', unit: '' },
+          { label: 'AQI', value: block.airQualityIndex, color: block.airQualityIndex > 130 ? 'var(--cl-red-400)' : 'var(--cl-heat-700)', unit: '' },
         ].map(m => (
           <div key={m.label} style={{
             background: 'var(--cl-card)',
@@ -237,7 +239,7 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
             borderRadius: 6,
             padding: '8px 10px',
           }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--cl-text-muted)', letterSpacing: '0.08em', marginBottom: 2 }}>{m.label}</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--cl-text-muted)', marginBottom: 2, fontWeight: 500 }}>{m.label}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: m.color, letterSpacing: '-0.02em' }}>
               {m.value}<span style={{ fontSize: 11, fontWeight: 400 }}>{m.unit}</span>
             </div>
@@ -256,31 +258,31 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
         justifyContent: 'space-between',
         alignItems: 'center',
       }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--cl-text-muted)' }}>FLOOD RISK</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--cl-text-muted)', fontWeight: 500 }}>Flood risk</span>
         <span style={{
-          fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500,
-          color: block.floodRisk === 'high' ? 'var(--cl-red-400)' : block.floodRisk === 'medium' ? 'var(--cl-heat-400)' : 'var(--cl-green-400)',
-          textTransform: 'uppercase',
+          fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
+          color: block.floodRisk === 'high' ? 'var(--cl-red-400)' : block.floodRisk === 'medium' ? 'var(--cl-heat-700)' : 'var(--cl-green-800)',
+          textTransform: 'capitalize',
         }}>{block.floodRisk}</span>
       </div>
 
       {/* Interventions */}
       {block.interventions.length > 0 && (
         <>
-          <SectionLabel>WATSONX RECOMMENDATIONS</SectionLabel>
+          <SectionLabel>Suggested actions</SectionLabel>
           {block.interventions.sort((a, b) => b.priority - a.priority).map((inv, i) => (
             <div key={i} style={{
               background: 'var(--cl-card)',
-              border: '1px solid rgba(52,211,153,0.15)',
+              border: '1px solid var(--cl-border)',
               borderRadius: 8,
               padding: '10px 12px',
               marginBottom: 6,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 600, color: 'var(--cl-text-primary)' }}>{inv.label}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--cl-green-400)' }}>−{inv.estimatedReduction}°C</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--cl-green-800)' }}>−{inv.estimatedReduction}°C</span>
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--cl-text-muted)', marginBottom: 8 }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--cl-text-muted)', marginBottom: 8 }}>
                 ${inv.costPerDegree.toLocaleString()}/°C reduction · Priority {inv.priority}/10
               </div>
               <button
@@ -288,19 +290,19 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
                 disabled={creatingOrder}
                 style={{
                   width: '100%',
-                  background: creatingOrder ? 'var(--cl-green-900)' : 'var(--cl-green-700)',
-                  border: '1px solid var(--cl-green-500)',
-                  borderRadius: 5,
-                  color: 'var(--cl-green-300)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 10,
-                  padding: '6px 0',
+                  background: creatingOrder ? 'var(--cl-green-800)' : 'var(--cl-green-700)',
+                  border: '1px solid var(--cl-green-800)',
+                  borderRadius: 8,
+                  color: 'var(--cl-on-accent)',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  padding: '8px 0',
                   cursor: creatingOrder ? 'not-allowed' : 'pointer',
-                  letterSpacing: '0.06em',
                   transition: 'var(--transition)',
                 }}
               >
-                {creatingOrder ? 'DISPATCHING...' : '⚡ DISPATCH WORK ORDER'}
+                {creatingOrder ? 'Sending…' : 'Create work order'}
               </button>
             </div>
           ))}
@@ -312,11 +314,11 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
           marginTop: 8,
           padding: '8px 12px',
           background: 'rgba(52,211,153,0.1)',
-          border: '1px solid rgba(52,211,153,0.3)',
-          borderRadius: 6,
-          fontFamily: 'var(--font-mono)',
-          fontSize: 10,
-          color: 'var(--cl-green-300)',
+            border: '1px solid var(--cl-border-bright)',
+          borderRadius: 8,
+          fontFamily: 'var(--font-body)',
+          fontSize: 13,
+          color: 'var(--cl-green-800)',
           lineHeight: 1.5,
         }}>{orderSuccess}</div>
       )}
@@ -328,12 +330,12 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
 function SectionLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      fontFamily: 'var(--font-mono)',
-      fontSize: 9,
-      letterSpacing: '0.1em',
-      color: 'var(--cl-text-muted)',
+      fontFamily: 'var(--font-display)',
+      fontSize: 14,
+      fontWeight: 600,
+      color: 'var(--cl-text-secondary)',
       marginBottom: 8,
-      paddingBottom: 4,
+      paddingBottom: 6,
       borderBottom: '1px solid var(--cl-border)',
       ...style,
     }}>{children}</div>
@@ -342,20 +344,20 @@ function SectionLabel({ children, style }: { children: React.ReactNode; style?: 
 
 function StatusBadge({ status }: { status: WorkOrder['status'] }) {
   const cfg = {
-    pending: { color: 'var(--cl-heat-300)', label: 'PENDING' },
-    dispatched: { color: 'var(--cl-heat-400)', label: 'SENT' },
-    in_progress: { color: 'var(--cl-green-400)', label: 'ACTIVE' },
-    completed: { color: 'var(--cl-green-700)', label: 'DONE' },
+    pending: { color: 'var(--cl-heat-500)', label: 'Pending' },
+    dispatched: { color: 'var(--cl-heat-700)', label: 'Sent' },
+    in_progress: { color: 'var(--cl-green-700)', label: 'Active' },
+    completed: { color: 'var(--cl-green-800)', label: 'Done' },
   }[status];
   return (
     <span style={{
-      fontFamily: 'var(--font-mono)',
-      fontSize: 9,
+      fontFamily: 'var(--font-body)',
+      fontSize: 11,
+      fontWeight: 600,
       color: cfg.color,
-      border: `1px solid ${cfg.color}40`,
-      padding: '2px 6px',
-      borderRadius: 4,
-      letterSpacing: '0.06em',
+      border: `1px solid ${cfg.color}55`,
+      padding: '3px 8px',
+      borderRadius: 6,
       flexShrink: 0,
     }}>{cfg.label}</span>
   );

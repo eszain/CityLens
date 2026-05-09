@@ -16,7 +16,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     <DemoContext.Provider value={{ demoMode, setDemoMode }}>
       {demoMode && (
         <div className="demo-banner">
-          ⚡ DEMO MODE — displaying synthetic Toronto data · toggle in nav to connect live backend
+          Sample data: Toronto demo. Turn off demo in the nav when your live API is connected.
         </div>
       )}
       <div style={{ paddingTop: demoMode ? 32 : 0, transition: 'padding-top 0.2s' }}>
