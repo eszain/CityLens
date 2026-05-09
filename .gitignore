@@ -19,6 +19,9 @@ infra/pgdata/
 # Seed scripts: downloaded zips, extracted Esri .gdb folders, etc.
 scripts/data/cache/
 
+# Large local GeoJSON (keep on disk; do not version)
+scripts/data/Floodline_TRCA_Polygon.geojson
+
 # Next.js
 frontend/.next/
 frontend/out/
