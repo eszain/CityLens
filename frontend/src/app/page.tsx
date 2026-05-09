@@ -1,6 +1,5 @@
-import DashboardPanel from "@/components/DashboardPanel";
-import HomeShell from "@/components/HomeShell";
+import { LandingView } from '@/components/LandingView';
 
-export default function Home() {
-  return <HomeShell rightPanel={<DashboardPanel />} />;
+export default function HomePage() {
+  return <LandingView />;
 }

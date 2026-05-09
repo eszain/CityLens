@@ -1,6 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 @import "tailwindcss";
-@import "tw-animate-css";
+@import "../../node_modules/tw-animate-css/dist/tw-animate.css";
 @import "shadcn/tailwind.css";
+
+/* CityLens earthy tokens (landing + map chrome) */
+:root {
+  --cl-page: #f3efe6;
+  --cl-surface: #e8e2d6;
+  --cl-card: #fdfcfa;
+  --cl-card-hover: #f7f2ea;
+  --cl-border: rgba(55, 48, 40, 0.1);
+  --cl-border-bright: rgba(55, 48, 40, 0.18);
+  --cl-black: #1c1917;
+  --cl-on-accent: #faf8f4;
+  --cl-green-950: #1a221c;
+  --cl-green-900: #2a3830;
+  --cl-green-800: #3d4f42;
+  --cl-green-700: #536456;
+  --cl-green-500: #6d8069;
+  --cl-green-400: #87977a;
+  --cl-green-300: #a6b298;
+  --cl-green-200: #c8d0bc;
+  --cl-green-100: #e2e8d8;
+  --cl-heat-900: #3d2a22;
+  --cl-heat-700: #7a5340;
+  --cl-heat-500: #a3715a;
+  --cl-heat-400: #b8876e;
+  --cl-heat-300: #cdb09a;
+  --cl-red-500: #a84840;
+  --cl-red-400: #ba5e52;
+  --cl-red-300: #ca7a6f;
+  --cl-text-primary: #2a2621;
+  --cl-text-secondary: #575049;
+  --cl-text-muted: #8c8478;
+  --cl-map-overlay: rgba(38, 34, 30, 0.92);
+  --cl-map-overlay-border: rgba(232, 226, 214, 0.2);
+  --font-display: 'Fraunces', 'Georgia', serif;
+  --font-body: 'Source Sans 3', system-ui, sans-serif;
+  --font-mono: 'DM Sans', system-ui, sans-serif;
+  --sidebar-w: 300px;
+  --panel-w: 320px;
+  --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -48,6 +89,7 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* shadcn / map UI components (Button, Card, DashboardPanel) */
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -117,14 +159,102 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Keep reset in @layer base so Tailwind spacing utilities (utilities layer) reliably override it. */
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
   }
-  body {
-    @apply bg-background text-foreground;
+}
+
+html, body {
+  height: 100%;
+  background: var(--cl-page);
+  color: var(--cl-text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+/* Reserve space below fixed demo banner so pages aren’t covered (map uses full-bleed separately). */
+body:has(.demo-banner) .dashboard-page-root {
+  padding-top: 2.25rem;
+}
+
+@media (min-width: 640px) {
+  body:has(.demo-banner) .dashboard-page-root {
+    padding-top: 2.5rem;
   }
-  html {
-    @apply font-sans;
-  }
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(90, 80, 70, 0.25); border-radius: 4px; }
+
+.font-display { font-family: var(--font-display); }
+.font-mono { font-family: var(--font-mono); }
+
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--cl-surface);
+  border-bottom: 1px solid var(--cl-border);
+  text-align: center;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  color: var(--cl-text-secondary);
+}
+
+.cl-card {
+  background: var(--cl-card);
+  border: 1px solid var(--cl-border);
+  border-radius: 14px;
+}
+
+.cl-card:hover {
+  border-color: var(--cl-border-bright);
+  background: var(--cl-card-hover);
+}
+
+.severity-critical { color: var(--cl-red-400); }
+.severity-high { color: var(--cl-heat-500); }
+.severity-medium { color: var(--cl-heat-400); }
+.severity-low { color: var(--cl-green-700); }
+
+.severity-critical-bg { background: rgba(168, 72, 64, 0.1); border-color: rgba(168, 72, 64, 0.22); }
+.severity-high-bg { background: rgba(163, 113, 90, 0.12); border-color: rgba(163, 113, 90, 0.22); }
+.severity-medium-bg { background: rgba(205, 176, 154, 0.15); border-color: rgba(163, 113, 90, 0.18); }
+.severity-low-bg { background: rgba(135, 151, 122, 0.12); border-color: rgba(83, 100, 86, 0.2); }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.5); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in { animation: fade-in 0.45s ease forwards; }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.loading-shimmer {
+  background: linear-gradient(90deg, var(--cl-surface) 25%, var(--cl-card-hover) 50%, var(--cl-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

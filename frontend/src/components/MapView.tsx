@@ -5,8 +5,9 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { Layers as LayersIcon, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { fetchJson } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { fetchJson } from "@/lib/api";
+import type { ActiveView, Block } from "@/types";
 
 type LayerToggle = {
   id: string;
@@ -34,10 +35,76 @@ const DEFAULT_ZOOM = 15.5;
 
 const OVERLAY_KEYS = ["canopy", "zoning", "flood_risk"] as const;
 
-export default function MapView({ leftPanelOpen = false }: { leftPanelOpen?: boolean }) {
+function heatColor(score: number): string {
+  if (score >= 85) return "#a84840";
+  if (score >= 70) return "#b8673d";
+  if (score >= 55) return "#b8876e";
+  if (score >= 35) return "#9faa7d";
+  return "#6d8069";
+}
+
+function equityColor(decile: number): string {
+  if (decile <= 2) return "#a84840";
+  if (decile <= 4) return "#b8673d";
+  if (decile <= 6) return "#b8876e";
+  if (decile <= 8) return "#9faa7d";
+  return "#6d8069";
+}
+
+function canopyColor(pct: number): string {
+  if (pct >= 50) return "#3d5242";
+  if (pct >= 30) return "#536456";
+  if (pct >= 20) return "#87977a";
+  if (pct >= 10) return "#cdb09a";
+  return "#a84840";
+}
+
+function getBlockColor(block: Block, view: ActiveView): string {
+  switch (view) {
+    case "equity":
+      return equityColor(block.incomeDecile);
+    case "canopy":
+      return canopyColor(block.treeCanopy);
+    case "flood":
+      return block.floodRisk === "high"
+        ? "#a84840"
+        : block.floodRisk === "medium"
+          ? "#b8876e"
+          : "#6d8069";
+    case "aqi":
+      return block.airQualityIndex > 130
+        ? "#a84840"
+        : block.airQualityIndex > 100
+          ? "#b8876e"
+          : "#6d8069";
+    default:
+      return heatColor(block.heatScore);
+  }
+}
+
+export interface MapViewProps {
+  blocks: Block[];
+  selectedBlock: Block | null;
+  setSelectedBlock: (b: Block | null) => void;
+  activeView: ActiveView;
+  loading: boolean;
+  /** Offset layers control when left overlay is open (336px open / 56px collapsed per layout doc). */
+  leftPanelOpen?: boolean;
+}
+
+export function MapView({
+  blocks,
+  selectedBlock,
+  setSelectedBlock,
+  activeView,
+  loading,
+  leftPanelOpen = true,
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const layersRef = useRef<LayerToggle[]>([]);
   const [layers, setLayers] = useState<LayerToggle[]>([
@@ -50,6 +117,11 @@ export default function MapView({ leftPanelOpen = false }: { leftPanelOpen?: boo
   ]);
 
   layersRef.current = layers;
+
+  const blocksRef = useRef(blocks);
+  const setSelectedBlockRef = useRef(setSelectedBlock);
+  blocksRef.current = blocks;
+  setSelectedBlockRef.current = setSelectedBlock;
 
   const token = useMemo(() => process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() || "", []);
 
@@ -93,10 +165,12 @@ export default function MapView({ leftPanelOpen = false }: { leftPanelOpen?: boo
     }
 
     for (const k of OVERLAY_KEYS) {
-      const layerId = k === "canopy" ? "overlay-canopy" : k === "zoning" ? "overlay-zoning" : "overlay-flood";
+      const layerId =
+        k === "canopy" ? "overlay-canopy" : k === "zoning" ? "overlay-zoning" : "overlay-flood";
       const vis = activeKeys.includes(k) ? "visible" : "none";
       if (map.getLayer(layerId)) map.setLayoutProperty(layerId, "visibility", vis);
-      if (map.getLayer(`${layerId}-outline`)) map.setLayoutProperty(`${layerId}-outline`, "visibility", vis);
+      if (map.getLayer(`${layerId}-outline`))
+        map.setLayoutProperty(`${layerId}-outline`, "visibility", vis);
     }
   }, []);
 
@@ -267,51 +341,57 @@ export default function MapView({ leftPanelOpen = false }: { leftPanelOpen?: boo
     });
     map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
     mapRef.current = map;
+    setMapReady(false);
 
     map.on("load", async () => {
       try {
         const fc = await fetchJson<GeoJSONFC>("/blocks/geojson?city=toronto");
-        map.addSource("blocks", { type: "geojson", data: fc });
-        map.addLayer({
-          id: "blocks-fill",
-          type: "fill",
-          source: "blocks",
-          slot: "middle",
-          paint: {
-            "fill-color": [
-              "interpolate",
-              ["linear"],
-              ["coalesce", ["to-number", ["get", "vulnerability_score"]], 0],
-              0,
-              "#eff3ff",
-              25,
-              "#bdd7e7",
-              50,
-              "#6baed6",
-              75,
-              "#3182bd",
-              100,
-              "#08519c",
-            ],
-            "fill-opacity": 0.72,
-          },
-        });
-        map.addLayer({
-          id: "blocks-outline",
-          type: "line",
-          source: "blocks",
-          slot: "middle",
-          paint: {
-            "line-color": "#1e293b",
-            "line-opacity": 0.35,
-            "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.2, 12, 0.8],
-          },
-        });
+        if (!map.getSource("blocks")) {
+          map.addSource("blocks", { type: "geojson", data: fc });
+          map.addLayer({
+            id: "blocks-fill",
+            type: "fill",
+            source: "blocks",
+            slot: "middle",
+            paint: {
+              "fill-color": [
+                "interpolate",
+                ["linear"],
+                ["coalesce", ["to-number", ["get", "vulnerability_score"]], 0],
+                0,
+                "#eff3ff",
+                25,
+                "#bdd7e7",
+                50,
+                "#6baed6",
+                75,
+                "#3182bd",
+                100,
+                "#08519c",
+              ],
+              "fill-opacity": 0.72,
+            },
+          });
+          map.addLayer({
+            id: "blocks-outline",
+            type: "line",
+            source: "blocks",
+            slot: "middle",
+            paint: {
+              "line-color": "#1e293b",
+              "line-opacity": 0.35,
+              "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.2, 12, 0.8],
+            },
+          });
+        }
 
         map.on("click", "blocks-fill", (e) => {
           const f = e.features?.[0];
-          if (!f?.properties?.external_id) return;
-          const bid = f.id !== undefined ? String(f.id) : "";
+          if (!f?.properties) return;
+          const bid =
+            f.id !== undefined && f.id !== null
+              ? String(f.id)
+              : String(f.properties?.external_id ?? "");
           const html = `
             <div style="font-family:system-ui,sans-serif;min-width:220px">
               <div style="font-weight:600;margin-bottom:6px">${String(f.properties?.name ?? "Area")}</div>
@@ -327,11 +407,17 @@ export default function MapView({ leftPanelOpen = false }: { leftPanelOpen?: boo
               </div>
               ${
                 bid
-                  ? `<div style="margin-top:10px"><a style="color:#1d4ed8;font-weight:600" href="/block/${bid}">Open block detail</a></div>`
+                  ? `<div style="margin-top:10px"><a style="color:#1d4ed8;font-weight:600" href="/block/${encodeURIComponent(bid)}">Open block detail</a></div>`
                   : ""
               }
             </div>`;
           new mapboxgl.Popup({ closeButton: true }).setLngLat(e.lngLat).setHTML(html).addTo(map);
+
+          const list = blocksRef.current;
+          const match = list.find(
+            (b) => b.id === bid || b.id === String(f.properties?.external_id),
+          );
+          if (match) setSelectedBlockRef.current(match);
         });
         map.on("mouseenter", "blocks-fill", () => {
           map.getCanvas().style.cursor = "pointer";
@@ -341,14 +427,69 @@ export default function MapView({ leftPanelOpen = false }: { leftPanelOpen?: boo
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load blocks");
+      } finally {
+        setMapReady(true);
       }
     });
 
     return () => {
+      setMapReady(false);
       map.remove();
       mapRef.current = null;
     };
   }, [token]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    if (blocks.length === 0) return;
+
+    for (const block of blocks) {
+      const color = getBlockColor(block, activeView);
+      const isSelected = selectedBlock?.id === block.id;
+      const size = isSelected ? 28 : block.heatScore > 70 ? 20 : 14;
+
+      const el = document.createElement("div");
+      el.style.cssText = `
+        width: ${size}px;
+        height: ${size}px;
+        border-radius: 50%;
+        background: ${color};
+        border: ${isSelected ? "3px" : "2px"} solid ${isSelected ? "#fff" : color};
+        box-shadow: 0 0 ${isSelected ? 20 : 8}px ${color}80;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        opacity: 0.95;
+      `;
+
+      const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+        .setLngLat([block.lng, block.lat])
+        .addTo(map);
+
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setSelectedBlock(isSelected ? null : block);
+      });
+
+      markersRef.current.push(marker);
+    }
+  }, [blocks, activeView, selectedBlock, mapReady, setSelectedBlock]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !selectedBlock) return;
+    map.flyTo({
+      center: [selectedBlock.lng, selectedBlock.lat],
+      zoom: 14,
+      pitch: 55,
+      duration: 1200,
+      essential: true,
+    });
+  }, [selectedBlock]);
 
   if (!token) {
     return (
@@ -366,11 +507,28 @@ export default function MapView({ leftPanelOpen = false }: { leftPanelOpen?: boo
 
   return (
     <div className="relative h-full w-full">
+      <style>{`@keyframes citylens-spin { to { transform: rotate(360deg); } }`}</style>
       <div ref={containerRef} className="h-full w-full" />
+
+      {loading ? (
+        <div
+          className="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-3 bg-[var(--cl-surface)]/90"
+          style={{ backdropFilter: "blur(4px)" }}
+        >
+          <div
+            className="h-10 w-10 rounded-full border-2 border-[var(--cl-border)] border-t-[var(--cl-green-700)]"
+            style={{ animation: "citylens-spin 0.8s linear infinite" }}
+            aria-hidden
+          />
+          <p className="text-sm font-medium text-[var(--cl-text-muted)]">Loading data…</p>
+        </div>
+      ) : null}
 
       <div
         className="pointer-events-none absolute top-4 z-10 flex max-w-sm flex-col gap-3 transition-[left] duration-300 ease-out"
-        style={{ left: leftPanelOpen ? "336px" : "56px" }}
+        style={{
+          left: leftPanelOpen ? "336px" : "56px",
+        }}
       >
         {layersOpen ? (
           <div className="pointer-events-auto rounded-lg border border-zinc-200 bg-white/95 p-3 shadow-md backdrop-blur">
