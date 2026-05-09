@@ -1,0 +1,17 @@
+# Root (monorepo-style)
+.env
+.env.local
+!.env.example
+!.env*.example
+
+# Python / backend
+backend/.venv/
+backend/__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Local PostGIS data volume markers (optional)
+infra/pgdata/
