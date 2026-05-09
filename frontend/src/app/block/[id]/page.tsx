@@ -2,6 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { apiBase, fetchJson } from "@/lib/api";
+import { Card, CardContent } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type BlockDetail = {
   id: string;
@@ -31,52 +35,74 @@ export default async function BlockPage(props: { params: Promise<{ id: string }>
     <div className="mx-auto flex min-h-full max-w-3xl flex-col gap-6 px-4 py-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">CityLens · Block</p>
-          <h1 className="text-2xl font-semibold text-zinc-900">{block.name ?? "Neighbourhood"}</h1>
-          <p className="mt-1 font-mono text-sm text-zinc-600">{block.external_id}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            CityLens · Block
+          </p>
+          <h1 className="text-2xl font-semibold">{block.name ?? "Neighbourhood"}</h1>
+          <p className="mt-1 font-mono text-sm text-muted-foreground">{block.external_id}</p>
         </div>
-        <Link className="text-sm text-zinc-700 underline-offset-4 hover:underline" href="/">
+        <Link
+          href="/"
+          className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+        >
           ← Back to map
         </Link>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Vulnerability</p>
-        <p className="mt-2 text-3xl font-semibold text-zinc-900">{block.vulnerability_score ?? "—"}</p>
-        <p className="mt-1 text-xs text-zinc-500">Rule-based score in MVP; ML optional via API flag.</p>
-      </div>
+      <StatCard
+        label="Vulnerability"
+        value={block.vulnerability_score ?? "—"}
+        description="Rule-based score in MVP; ML optional via API flag."
+      />
 
-      <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Recommended interventions</p>
-        <ul className="mt-3 space-y-2 text-sm text-zinc-800">
-          {(block.interventions ?? []).slice(0, 6).map((row, idx) => (
-            <li key={idx} className="rounded-md border border-zinc-100 bg-zinc-50 px-3 py-2">
-              <span className="font-medium">{String(row.intervention_type ?? "—")}</span>
-              <span className="text-zinc-600">
-                {" "}
-                · ROI {String(row.roi_score ?? "—")} · −{String(row.projected_temp_reduction_c ?? "—")} °C · $
-                {String(row.cost_estimate_cad ?? "—")}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Work orders</p>
-        {(block.work_orders ?? []).length === 0 ? (
-          <p className="mt-2 text-sm text-zinc-600">None yet — create via POST {api}/work-orders</p>
-        ) : (
+      <Card>
+        <CardContent>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Recommended interventions
+          </p>
           <ul className="mt-3 space-y-2 text-sm">
-            {(block.work_orders ?? []).map((wo, idx) => (
-              <li key={idx} className="rounded-md border border-zinc-100 px-3 py-2">
-                <span className="font-medium">{String(wo.status ?? "—")}</span>
-                <span className="text-zinc-600"> · {String(wo.department_name ?? "")}</span>
+            {(block.interventions ?? []).slice(0, 6).map((row, idx) => (
+              <li
+                key={idx}
+                className="rounded-md border border-border bg-muted/30 px-3 py-2"
+              >
+                <span className="font-medium">{String(row.intervention_type ?? "—")}</span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  · ROI {String(row.roi_score ?? "—")} · −
+                  {String(row.projected_temp_reduction_c ?? "—")} °C · $
+                  {String(row.cost_estimate_cad ?? "—")}
+                </span>
               </li>
             ))}
           </ul>
-        )}
-      </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Work orders
+          </p>
+          {(block.work_orders ?? []).length === 0 ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              None yet — create via POST {api}/work-orders
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2 text-sm">
+              {(block.work_orders ?? []).map((wo, idx) => (
+                <li key={idx} className="rounded-md border border-border px-3 py-2">
+                  <span className="font-medium">{String(wo.status ?? "—")}</span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {String(wo.department_name ?? "")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
