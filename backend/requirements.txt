@@ -5,3 +5,4 @@ asyncpg>=0.30,<1
 python-dotenv>=1.0,<2
 httpx>=0.27,<1
 psycopg[binary]>=3.2,<4
+ibm-watsonx-ai>=1.1,<2

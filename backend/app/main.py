@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import close_db, init_db
-from app.routers import blocks, equity, ingest, interventions, layers, work_orders
+from app.routers import blocks, equity, ingest, interventions, layers, risk_scores, work_orders
 
 
 @asynccontextmanager
@@ -34,6 +34,7 @@ app.include_router(interventions.router)
 app.include_router(equity.router)
 app.include_router(layers.router)
 app.include_router(ingest.router)
+app.include_router(risk_scores.router)
 
 
 @app.get("/health")
