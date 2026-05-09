@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 
 from app.deps import DbConn
+from app.pg_json import decode_pg_json
 from app.services import scoring
 from app.services.watsonx import score_block_ml
 
@@ -76,7 +77,7 @@ async def blocks_geojson(
             {
                 "type": "Feature",
                 "id": str(r["id"]),
-                "geometry": r["geom"],
+                "geometry": decode_pg_json(r["geom"]),
                 "properties": {
                     "name": r["name"],
                     "external_id": r["external_id"],
@@ -178,7 +179,7 @@ async def get_block(conn: DbConn, block_id: UUID, city: str = Query("toronto")) 
         "vulnerability_score": row["vulnerability_score"],
         "lst_mean_c": row["lst_mean_c"],
         "canopy_pct": row["canopy_pct"],
-        "geometry": row["geom_json"],
+        "geometry": decode_pg_json(row["geom_json"]),
     }
 
     pm25 = await conn.fetchval(
