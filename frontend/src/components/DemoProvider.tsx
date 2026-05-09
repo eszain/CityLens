@@ -19,9 +19,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
           Sample data: Toronto demo. Turn off demo in the nav when your live API is connected.
         </div>
       )}
-      <div style={{ paddingTop: demoMode ? 32 : 0, transition: 'padding-top 0.2s' }}>
-        {children}
-      </div>
+      {children}
     </DemoContext.Provider>
   );
 }

@@ -109,8 +109,18 @@ async def list_blocks(
     if use_bbox:
         rows = await conn.fetch(
             """
-            SELECT b.id, b.name, b.external_id, b.vulnerability_score, b.lst_mean_c, b.canopy_pct
+            SELECT b.id, b.name, b.external_id, b.vulnerability_score, b.lst_mean_c, b.canopy_pct,
+                   ST_Y(ST_Centroid(b.geom))::double precision AS lat,
+                   ST_X(ST_Centroid(b.geom))::double precision AS lng,
+                   demo.low_income_flag, demo.population
             FROM blocks b
+            LEFT JOIN LATERAL (
+              SELECT d.low_income_flag, d.population
+              FROM demographics d
+              WHERE d.block_id = b.id
+              ORDER BY d.census_year DESC
+              LIMIT 1
+            ) demo ON true
             WHERE b.city_id = $1
               AND ST_Intersects(b.geom, ST_MakeEnvelope($2, $3, $4, $5, 4326))
             ORDER BY b.external_id
@@ -139,8 +149,18 @@ async def list_blocks(
     else:
         rows = await conn.fetch(
             """
-            SELECT b.id, b.name, b.external_id, b.vulnerability_score, b.lst_mean_c, b.canopy_pct
+            SELECT b.id, b.name, b.external_id, b.vulnerability_score, b.lst_mean_c, b.canopy_pct,
+                   ST_Y(ST_Centroid(b.geom))::double precision AS lat,
+                   ST_X(ST_Centroid(b.geom))::double precision AS lng,
+                   demo.low_income_flag, demo.population
             FROM blocks b
+            LEFT JOIN LATERAL (
+              SELECT d.low_income_flag, d.population
+              FROM demographics d
+              WHERE d.block_id = b.id
+              ORDER BY d.census_year DESC
+              LIMIT 1
+            ) demo ON true
             WHERE b.city_id = $1
             ORDER BY b.external_id
             LIMIT $2 OFFSET $3

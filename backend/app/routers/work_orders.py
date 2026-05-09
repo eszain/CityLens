@@ -143,7 +143,9 @@ async def list_work_orders(
     where_sql = " AND ".join(filters)
     q = f"""
         SELECT wo.id, wo.status, wo.created_at, wo.updated_at, wo.notes,
+               b.id::text AS block_id,
                b.external_id AS block_code,
+               b.vulnerability_score AS block_vulnerability_score,
                i.intervention_type,
                d.name AS department_name
         FROM work_orders wo

@@ -75,7 +75,7 @@ export interface MapViewProps {
   setSelectedBlock: (b: Block | null) => void;
   activeView: ActiveView;
   loading: boolean;
-  /** Offset layer control for left sidebar (default matches 300px sidebar). */
+  /** Offset layers control when left overlay is open (336px open / 56px collapsed per layout doc). */
   leftPanelOpen?: boolean;
 }
 
@@ -446,7 +446,9 @@ export function MapView({
 
       <div
         className="pointer-events-none absolute top-4 z-10 flex max-w-sm flex-col gap-3 transition-[left] duration-300 ease-out"
-        style={{ left: leftPanelOpen ? "336px" : "56px" }}
+        style={{
+          left: leftPanelOpen ? "336px" : "56px",
+        }}
       >
         {layersOpen ? (
           <div className="pointer-events-auto rounded-lg border border-zinc-200 bg-white/95 p-3 shadow-md backdrop-blur">

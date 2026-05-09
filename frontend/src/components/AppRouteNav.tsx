@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 import type { CSSProperties } from 'react';
 
-type Active = 'home' | 'map' | 'dashboard' | 'other';
+type Active = 'map' | 'dashboard' | 'other'; // `other` = /block/* etc.
 
 const linkStyle = (isCurrent: boolean): CSSProperties => ({
   fontFamily: 'var(--font-body)',
@@ -14,7 +15,13 @@ const linkStyle = (isCurrent: boolean): CSSProperties => ({
   textDecoration: 'none',
 });
 
+/** Secondary nav for /dashboard, /block/*, etc. Map workspace uses NavBar inside HomeShell. */
 export function AppRouteNav({ active }: { active: Active }) {
+  const pathname = usePathname();
+  const onHome = pathname === '/';
+  const onMap = pathname === '/map';
+  const onDashboard = pathname === '/dashboard' || active === 'dashboard';
+
   return (
     <div
       style={{
@@ -28,15 +35,15 @@ export function AppRouteNav({ active }: { active: Active }) {
         background: 'var(--cl-card)',
       }}
     >
-      <Link href="/" style={linkStyle(active === 'home')}>
+      <Link href="/" style={linkStyle(onHome)}>
         Home
       </Link>
       <span style={{ color: 'var(--cl-border-bright)', userSelect: 'none' }}>·</span>
-      <Link href="/map" style={linkStyle(active === 'map')}>
+      <Link href="/map" style={linkStyle(onMap)}>
         Map
       </Link>
       <span style={{ color: 'var(--cl-border-bright)', userSelect: 'none' }}>·</span>
-      <Link href="/dashboard" style={linkStyle(active === 'dashboard')}>
+      <Link href="/dashboard" style={linkStyle(onDashboard)}>
         Dashboard
       </Link>
     </div>
