@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "label": "Sample mixed-use zone" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-79.405, 43.705],
+            [-79.385, 43.705],
+            [-79.385, 43.72],
+            [-79.405, 43.72],
+            [-79.405, 43.705]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "label": "Sample canopy patch A" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-79.39, 43.65],
+            [-79.37, 43.65],
+            [-79.37, 43.67],
+            [-79.39, 43.67],
+            [-79.39, 43.65]
+          ]
+        ]
+      }
+    }
+  ]
+}
