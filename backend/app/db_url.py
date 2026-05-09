@@ -26,6 +26,20 @@ def sanitize_libpq_postgres_uri(uri: str) -> str:
     return urlunparse(parsed._replace(query=new_query))
 
 
+def psycopg_connect_kwargs_for_pooler(dsn: str) -> dict:
+    """
+    PgBouncer ``pool_mode=transaction`` (Supabase port **6543**) shares backends across
+    clients; psycopg3 prepared statements then raise ``DuplicatePreparedStatement``.
+    Pass the returned kwargs into ``psycopg.connect(..., **kwargs)``.
+    """
+    try:
+        if urlparse(dsn.strip()).port == 6543:
+            return {"prepare_threshold": None}
+    except (ValueError, TypeError):
+        pass
+    return {}
+
+
 def asyncpg_statement_cache_size_for_dsn(uri: str) -> int:
     """
     Supabase transaction pool uses PgBouncer pool_mode=transaction on port **6543**;

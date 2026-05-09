@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 """
 Seed Toronto neighbourhood polygons from Open Data + mock scores, departments, demographics, sample overlays.
+
+Street tree inventory (CKAN datastore): run ``scripts/seed_toronto_street_trees.py`` after migrations
+(see ``supabase/migrations/*street_trees*``).
+
+Official zoning / flood overlays: ``scripts/seed_toronto_official_overlays.py`` (put TRCA GeoJSON under
+``scripts/data/``).
+
+Forest / land cover (2018 GDB from CKAN): ``scripts/seed_toronto_land_cover.py`` (needs ``geopandas`` +
+``pyogrio``; migration ``map_overlays`` must allow ``land_cover``).
 Requires: Postgres URL (DATABASE_URL and/or SUPABASE_* — see README in .env.example), schema applied, psycopg.
 """
 
@@ -198,7 +207,8 @@ def seed_sample_overlays(cur: psycopg.Cursor, city_id: str) -> int:
     cur.execute(
         """
         DELETE FROM map_overlays
-        WHERE city_id = %s AND layer_key IN ('canopy', 'zoning', 'flood_risk')
+        WHERE city_id = %s AND layer_key IN ('canopy', 'zoning', 'flood_risk', 'land_cover')
+          AND (properties->>'source') = 'sample'
         """,
         (city_id,),
     )
@@ -218,7 +228,8 @@ def seed_sample_overlays(cur: psycopg.Cursor, city_id: str) -> int:
             if not geom:
                 continue
             geom = geometry_to_multipolygon(geom)
-            props = f.get("properties") or {}
+            props = dict(f.get("properties") or {})
+            props.setdefault("source", "sample")
             cur.execute(
                 """
                 INSERT INTO map_overlays (city_id, layer_key, label, geom, properties)
@@ -257,7 +268,13 @@ def main() -> int:
             )
         except ValueError:
             timeout_s = 60
-        conn_cm = psycopg.connect(dsn, connect_timeout=timeout_s)
+        from app.db_url import psycopg_connect_kwargs_for_pooler  # noqa: PLC0415
+
+        conn_cm = psycopg.connect(
+            dsn,
+            connect_timeout=timeout_s,
+            **psycopg_connect_kwargs_for_pooler(dsn),
+        )
     except psycopg.OperationalError as e:
         msg_l = str(e).lower()
         print("Database connection failed.", file=sys.stderr)

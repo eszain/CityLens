@@ -17,7 +17,14 @@ type GeoJSONFC = GeoJSON.FeatureCollection;
 const TORONTO_CENTER: [number, number] = [-79.38, 43.71];
 const DEFAULT_ZOOM = 10.2;
 
-const OVERLAY_KEYS = ["canopy", "zoning", "flood_risk"] as const;
+const OVERLAY_KEYS = ["canopy", "zoning", "flood_risk", "land_cover"] as const;
+
+const OVERLAY_LAYER_IDS: Record<(typeof OVERLAY_KEYS)[number], string> = {
+  canopy: "overlay-canopy",
+  zoning: "overlay-zoning",
+  flood_risk: "overlay-flood",
+  land_cover: "overlay-land-cover",
+};
 
 export default function MapView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -28,6 +35,7 @@ export default function MapView() {
     { id: "canopy", label: "Tree canopy (sample)", active: false },
     { id: "zoning", label: "Zoning (sample)", active: false },
     { id: "flood_risk", label: "Flood risk (sample)", active: false },
+    { id: "land_cover", label: "Land cover (2018)", active: false },
     { id: "air_quality", label: "Air quality (OpenAQ ingest)", active: false },
     { id: "firms", label: "NASA FIRMS hotspots", active: false },
   ]);
@@ -52,6 +60,7 @@ export default function MapView() {
         { layerId: "overlay-canopy", key: "canopy", color: "#15803d" },
         { layerId: "overlay-zoning", key: "zoning", color: "#a855f7" },
         { layerId: "overlay-flood", key: "flood_risk", color: "#0369a1" },
+        { layerId: "overlay-land-cover", key: "land_cover", color: "#14532d" },
       ];
       for (const d of defs) {
         map.addLayer({
@@ -74,7 +83,7 @@ export default function MapView() {
     }
 
     for (const k of OVERLAY_KEYS) {
-      const layerId = k === "canopy" ? "overlay-canopy" : k === "zoning" ? "overlay-zoning" : "overlay-flood";
+      const layerId = OVERLAY_LAYER_IDS[k];
       const vis = activeKeys.includes(k) ? "visible" : "none";
       if (map.getLayer(layerId)) map.setLayoutProperty(layerId, "visibility", vis);
       if (map.getLayer(`${layerId}-outline`)) map.setLayoutProperty(`${layerId}-outline`, "visibility", vis);

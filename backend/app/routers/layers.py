@@ -21,7 +21,7 @@ async def _city_id(conn, slug: str):
 async def overlays_geojson(
     conn: DbConn,
     city: str = Query("toronto"),
-    layers: str = Query("canopy,zoning,flood_risk", description="Comma-separated layer keys"),
+    layers: str = Query("canopy,zoning,flood_risk,land_cover", description="Comma-separated layer keys"),
 ) -> dict[str, Any]:
     keys = [k.strip() for k in layers.split(",") if k.strip()]
     cid = await _city_id(conn, city)

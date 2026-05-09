@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     nasa_firms_map_key: str | None = None
     sentinel_hub_client_id: str | None = None
     sentinel_hub_client_secret: str | None = None
+    # Copernicus Data Space uses identity + sh.dataspace hosts; legacy SH uses services.sentinel-hub.com.
+    sentinel_hub_use_cdse: bool = Field(default=False, validation_alias="SENTINEL_HUB_USE_CDSE")
+    sentinel_hub_oauth_url: str | None = Field(default=None, validation_alias="SENTINEL_HUB_OAUTH_URL")
+    sentinel_hub_catalog_search_url: str | None = Field(
+        default=None,
+        validation_alias="SENTINEL_HUB_CATALOG_SEARCH_URL",
+    )
 
     watsonx_api_key: str | None = None
     watsonx_project_id: str | None = None

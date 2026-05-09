@@ -15,3 +15,10 @@ backend/__pycache__/
 
 # Local PostGIS data volume markers (optional)
 infra/pgdata/
+
+# Seed scripts: downloaded zips, extracted Esri .gdb folders, etc.
+scripts/data/cache/
+
+# Next.js
+frontend/.next/
+frontend/out/

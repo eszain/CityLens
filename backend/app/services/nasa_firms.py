@@ -16,24 +16,28 @@ logger = logging.getLogger(__name__)
 
 async def fetch_modis_hotspots_csv(days: int = 1) -> list[dict]:
     """
-    Fetch MODIS hotspots via FIRMS CSV export for Canada region subset.
-    Requires NASA FIRMS map key for CSV export endpoints.
+    Fetch MODIS NRT hotspots via FIRMS area CSV for the configured city bbox
+    (same bounds used when filtering rows on ingest). Requires NASA FIRMS MAP_KEY.
     """
     key = settings.nasa_firms_map_key
     if not key:
         logger.info("NASA_FIRMS_MAP_KEY not set; skipping FIRMS ingest.")
         return []
 
-    # FIRMS Canada CSV (MODIS) — key passed as MAP_KEY query param on firms.modaps.eosdis.nasa.gov
-    base = "https://firms.modaps.eosdis.nasa.gov/api/country/csv"
-    url = f"{base}/{key}/MODIS_NRT/CANADA/{days}"
+    # Area CSV: /api/area/csv/{MAP_KEY}/{SOURCE}/{west,south,east,north}/{day_range}
+    # (Country-by-name codes are error-prone; Canada country queries are discouraged by FIRMS.)
+    bbox = settings.toronto_bbox.replace(" ", "")
+    url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{key}/MODIS_NRT/{bbox}/{days}"
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             r = await client.get(url)
             r.raise_for_status()
             text = r.text
     except Exception as exc:  # noqa: BLE001
-        logger.warning("FIRMS CSV fetch failed: %s", exc)
+        detail = ""
+        if isinstance(exc, httpx.HTTPStatusError) and exc.response is not None:
+            detail = (exc.response.text or "")[:500]
+        logger.warning("FIRMS CSV fetch failed: %s %s", exc, detail)
         return []
 
     reader = csv.DictReader(io.StringIO(text))
