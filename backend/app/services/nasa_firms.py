@@ -16,17 +16,34 @@ logger = logging.getLogger(__name__)
 
 async def fetch_modis_hotspots_csv(days: int = 1) -> list[dict]:
     """
-    Fetch MODIS hotspots via FIRMS CSV export for Canada region subset.
-    Requires NASA FIRMS map key for CSV export endpoints.
+    Fetch MODIS hotspots via FIRMS Area CSV export (west,south,east,north).
+
+    The **country/csv** endpoint is disabled by NASA; use **area/csv** instead
+    (https://firms.modaps.eosdis.nasa.gov/api/area/). Requires ``NASA_FIRMS_MAP_KEY``.
+
+    ``TORONTO_BBOX`` (min_lon,min_lat,max_lon,max_lat) matches FIRMS area order
+    (west,south,east,north). Day range is clamped to 1–5 per API limits.
     """
     key = settings.nasa_firms_map_key
     if not key:
         logger.info("NASA_FIRMS_MAP_KEY not set; skipping FIRMS ingest.")
         return []
 
-    # FIRMS Canada CSV (MODIS) — key passed as MAP_KEY query param on firms.modaps.eosdis.nasa.gov
-    base = "https://firms.modaps.eosdis.nasa.gov/api/country/csv"
-    url = f"{base}/{key}/MODIS_NRT/CANADA/{days}"
+    parts = [p.strip() for p in settings.toronto_bbox.split(",")]
+    if len(parts) != 4:
+        logger.warning("Invalid TORONTO_BBOX (expected 4 comma-separated numbers); skipping FIRMS.")
+        return []
+    try:
+        west, south, east, north = (float(x) for x in parts)
+    except ValueError:
+        logger.warning("Invalid TORONTO_BBOX values; skipping FIRMS.")
+        return []
+
+    day_range = min(max(int(days), 1), 5)
+    # /api/area/csv/[MAP_KEY]/[SOURCE]/[west,south,east,north]/[DAY_RANGE]
+    area = f"{west},{south},{east},{north}"
+    base = "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
+    url = f"{base}/{key}/MODIS_NRT/{area}/{day_range}"
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             r = await client.get(url)

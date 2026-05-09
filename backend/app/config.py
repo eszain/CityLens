@@ -25,10 +25,17 @@ class Settings(BaseSettings):
 
     enable_ai_scoring: bool = False
 
-    openaq_api_key: str | None = None
+    openaq_api_key: str | None = Field(default=None, validation_alias="OPENAQ_API_KEY")
     nasa_firms_map_key: str | None = None
     sentinel_hub_client_id: str | None = None
     sentinel_hub_client_secret: str | None = None
+    # Copernicus Data Space OAuth clients → CDSE hosts (default). Legacy SH → false.
+    sentinel_hub_use_cdse: bool = Field(default=True, validation_alias="SENTINEL_HUB_USE_CDSE")
+    sentinel_hub_oauth_url: str | None = Field(default=None, validation_alias="SENTINEL_HUB_OAUTH_URL")
+    sentinel_hub_catalog_search_url: str | None = Field(
+        default=None,
+        validation_alias="SENTINEL_HUB_CATALOG_SEARCH_URL",
+    )
 
     watsonx_api_key: str | None = None
     watsonx_project_id: str | None = None

@@ -40,6 +40,19 @@ def asyncpg_statement_cache_size_for_dsn(uri: str) -> int:
     return 100
 
 
+def psycopg_connect_kwargs_for_pooler(uri: str) -> dict[str, object]:
+    """
+    Extra ``psycopg.connect()`` kwargs for Supabase transaction pool (PgBouncer on **6543**).
+    Disables statement preparation so pooled connections behave like asyncpg with statement_cache=0.
+    """
+    try:
+        if urlparse(uri.strip()).port == 6543:
+            return {"prepare_threshold": None}
+    except (ValueError, TypeError):
+        pass
+    return {}
+
+
 def looks_like_local_supabase_api(supabase_url: str | None) -> bool:
     if not supabase_url:
         return False

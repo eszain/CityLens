@@ -55,7 +55,7 @@ async def ingest_openaq(conn: DbConn, city: str = Query("toronto")) -> dict:
 
 
 @router.post("/firms")
-async def ingest_firms(conn: DbConn, city: str = Query("toronto"), days: int = Query(1, ge=1, le=10)) -> dict:
+async def ingest_firms(conn: DbConn, city: str = Query("toronto"), days: int = Query(1, ge=1, le=5)) -> dict:
     cid = await _city_id(conn, city)
     bbox = _toronto_bbox_tuple()
     rows = await nasa_firms.fetch_modis_hotspots_csv(days=days)
