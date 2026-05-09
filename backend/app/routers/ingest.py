@@ -10,6 +10,7 @@ from app.config import settings
 from app.deps import DbConn
 from app.services import nasa_firms, openaq, scoring, sentinel_hub
 from app.services.nasa_firms import parse_firms_datetime
+from app.services.watsonx_data import archive_payload, export_features_for_ml
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
@@ -51,6 +52,7 @@ async def ingest_openaq(conn: DbConn, city: str = Query("toronto")) -> dict:
             json.dumps(loc["raw"]),
         )
         inserted += 1
+    await archive_payload("openaq", {"city": city, "inserted": inserted, "location_count": len(locs)})
     return {"inserted": inserted}
 
 
@@ -79,6 +81,7 @@ async def ingest_firms(conn: DbConn, city: str = Query("toronto"), days: int = Q
             json.dumps(row["raw"]),
         )
         inserted += 1
+    await archive_payload("firms", {"city": city, "inserted": inserted, "candidates": len(rows)})
     return {"inserted": inserted, "candidates": len(rows)}
 
 
@@ -133,6 +136,7 @@ async def ingest_sentinel_zonal(conn: DbConn, city: str = Query("toronto")) -> d
             "sentinel_stub_v1",
         )
         n += 1
+    await archive_payload("sentinel", {"city": city, "updated_blocks": n, "lst_mean_c": lst})
     return {"updated_blocks": n, "lst_mean_c": lst}
 
 
@@ -190,4 +194,14 @@ async def ingest_equity_snapshot(conn: DbConn, city: str = Query("toronto")) -> 
         )
         inserted += 1
 
+    await archive_payload("equity", {"city": city, "snapshots_written": inserted, "date": snap_date.isoformat()})
     return {"snapshots_written": inserted, "date": snap_date.isoformat()}
+
+
+@router.post("/export_features")
+async def export_ml_features(conn: DbConn, city: str = Query("toronto")) -> dict:
+    """
+    Export gold-layer block features to IBM COS for watsonx.data / AutoAI training.
+    Returns the feature manifest (row count, COS key if uploaded, or in-memory data).
+    """
+    return await export_features_for_ml(city_slug=city, conn=conn)

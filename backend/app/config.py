@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     watsonx_url: str | None = None
     watsonx_space_id: str | None = None
 
+    # IBM Cloud Object Storage — used by watsonx.data archiving
+    cos_api_key: str | None = None
+    cos_instance_crn: str | None = None
+    cos_endpoint: str = "https://s3.us-south.cloud-object-storage.appdomain.cloud"
+    cos_bucket: str = "citylens-archive"
+
     toronto_bbox: str = "-79.65,43.58,-79.12,43.85"
     city_slug_default: str = "toronto"
 
