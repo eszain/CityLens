@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "label": "Sample shoreline flood hazard" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-79.365, 43.625],
+            [-79.34, 43.625],
+            [-79.34, 43.64],
+            [-79.365, 43.64],
+            [-79.365, 43.625]
+          ]
+        ]
+      }
+    }
+  ]
+}
