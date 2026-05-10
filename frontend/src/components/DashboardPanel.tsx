@@ -1,16 +1,19 @@
 'use client';
 
+import { FileText, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useDemoMode } from '@/components/DemoProvider';
-import { apiBase, fetchEquityReport } from '@/lib/api';
+import { usePetitionStore } from '@/components/PetitionStore';
+import { apiBase, fetchBlocks, fetchEquityReport } from '@/lib/api';
 import { buildDemoEquityReport } from '@/lib/demoData';
-import type { EquityReport } from '@/types';
+import { formatPetitionDate } from '@/lib/petition';
+import type { Block, EquityReport } from '@/types';
 import { cn } from '@/lib/utils';
 
 const sectionLabelClass =
   'font-display text-sm font-semibold text-[var(--cl-text-secondary)] border-b border-[var(--cl-border)] pb-1.5';
 const insetCardClass =
-  'w-full max-w-[248px] rounded-lg border border-[rgba(239,68,68,0.25)] border-l-[3px] border-l-[var(--cl-red-500)] bg-[var(--cl-card)] pl-8 pr-6 pb-8 pt-7 transition-[background-color] duration-150 hover:bg-[var(--cl-card-hover)]';
+  'w-full max-w-[248px] rounded-lg border border-[var(--cl-border)] bg-[var(--cl-card)] pl-8 pr-6 pb-8 pt-7';
 
 function DashboardSection({
   title,
@@ -37,10 +40,82 @@ type DashboardPanelProps = {
   embedded?: boolean;
 };
 
+function buildBlocksCsv(blocks: Block[]): string {
+  const headers = [
+    'id',
+    'name',
+    'severity',
+    'income_decile',
+    'heat_score',
+    'temperature_delta_c',
+    'tree_canopy_pct',
+    'impervious_pct',
+    'population',
+    'air_quality_index',
+    'pm25_ugm3',
+    'flood_risk',
+    'lat',
+    'lng',
+  ];
+  const escape = (v: unknown) => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const rows = blocks.map((b) =>
+    [
+      b.id,
+      b.name,
+      b.severity,
+      b.incomeDecile,
+      b.heatScore,
+      b.temperatureDelta,
+      b.treeCanopy,
+      b.impervious,
+      b.population,
+      b.airQualityIndex,
+      b.pm25Ugm3,
+      b.floodRisk,
+      b.lat,
+      b.lng,
+    ]
+      .map(escape)
+      .join(','),
+  );
+  return [headers.join(','), ...rows].join('\n');
+}
+
+function downloadCsv(filename: string, csv: string): void {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function DashboardPanel({ embedded = false }: DashboardPanelProps) {
   const { demoMode } = useDemoMode();
   const [report, setReport] = useState<EquityReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [csvBusy, setCsvBusy] = useState(false);
+  const { drafts, selectDraft, removeDraft } = usePetitionStore();
+
+  async function handleExportBlocksCsv() {
+    setCsvBusy(true);
+    try {
+      const blocks = await fetchBlocks(demoMode);
+      const csv = buildBlocksCsv(blocks);
+      const ts = new Date().toISOString().slice(0, 10);
+      downloadCsv(`citylens-blocks-${ts}.csv`, csv);
+    } catch (err) {
+      console.error('Block CSV export failed:', err);
+    } finally {
+      setCsvBusy(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -142,32 +217,77 @@ export default function DashboardPanel({ embedded = false }: DashboardPanelProps
       </DashboardSection>
 
       <DashboardSection
-        title="Exports"
+        title="Files"
         titleClassName="max-w-[268px]"
-        cardClassName="max-w-[268px]"
+        cardClassName="max-w-[268px] p-3"
       >
-        <div className="flex w-full flex-col items-center gap-5 px-2 py-2">
-          {demoMode ? (
-            <p className="w-full px-1 pb-3 pt-2 text-center text-[11px] leading-relaxed text-[var(--cl-text-muted)]">
-              CSV export uses the live API. Turn off Demo to download a real snapshot.
+        <div className="flex w-full min-w-0 flex-col items-stretch gap-3">
+          <button
+            type="button"
+            onClick={handleExportBlocksCsv}
+            disabled={csvBusy}
+            className={cn(
+              'flex h-10 w-full shrink-0 items-center justify-center rounded-lg px-[10px]',
+              'bg-[var(--cl-green-700)] text-[13px] font-semibold text-[var(--cl-on-accent)]',
+              'transition-[filter,transform] hover:brightness-105 active:translate-y-px',
+              csvBusy && 'cursor-wait opacity-70',
+            )}
+          >
+            {csvBusy ? 'Building CSV…' : 'City block info · CSV'}
+          </button>
+
+          <div className="mt-1">
+            <p className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--cl-text-muted)]">
+              Drafts ({drafts.length})
             </p>
-          ) : (
-            <>
-              <a
-                href={`${api}/equity/report?city=toronto&export_format=csv`}
-                className={cn(
-                  'flex h-10 w-[200px] max-w-full shrink-0 items-center justify-center rounded-lg px-[10px]',
-                  'bg-[var(--cl-green-700)] text-[13px] font-semibold text-[var(--cl-on-accent)]',
-                  'transition-[filter,transform] hover:brightness-105 active:translate-y-px',
-                )}
-              >
-                Download CSV
-              </a>
-              <p className="w-full px-1 pb-3 pt-2 text-center text-[11px] leading-relaxed text-[var(--cl-text-muted)]">
-                Snapshot date: {report.as_of}
+            {drafts.length === 0 ? (
+              <p className="px-1 pb-1 text-[11px] leading-relaxed text-[var(--cl-text-muted)]">
+                No saved petition drafts yet. Open a block, run the AI analysis, and click <strong>Draft plan</strong> to create one.
               </p>
-            </>
-          )}
+            ) : (
+              <ul className="flex w-full min-w-0 flex-col gap-1.5">
+                {drafts.map((d) => (
+                  <li key={d.id} className="flex w-full min-w-0 items-stretch gap-1">
+                    <button
+                      type="button"
+                      onClick={() => selectDraft(d.id)}
+                      className={cn(
+                        'flex min-w-0 flex-1 items-center gap-2 rounded-md border border-[var(--cl-border)] bg-[var(--cl-card)] px-2 py-1.5 text-left',
+                        'transition-colors hover:bg-[var(--cl-card-hover)]',
+                      )}
+                    >
+                      <FileText size={14} aria-hidden className="shrink-0 text-[var(--cl-green-800)]" />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="block w-full truncate font-display text-[12px] font-semibold text-[var(--cl-text-primary)]">
+                          {d.subject || 'Untitled petition'}
+                        </span>
+                        <span className="block w-full truncate text-[10px] text-[var(--cl-text-muted)]">
+                          {d.block.name} · {formatPetitionDate(d.meta.dateCreated)}
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Delete draft "${d.subject || 'Untitled petition'}"?`)) {
+                          removeDraft(d.id);
+                        }
+                      }}
+                      aria-label="Delete draft"
+                      title="Delete draft"
+                      className={cn(
+                        'flex w-7 shrink-0 items-center justify-center rounded-md border border-[var(--cl-border)]',
+                        'bg-[var(--cl-card)] text-[var(--cl-text-muted)]',
+                        'transition-colors hover:bg-[var(--cl-card-hover)] hover:text-[var(--cl-red-400)]',
+                      )}
+                    >
+                      <Trash2 size={12} aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </DashboardSection>
     </div>

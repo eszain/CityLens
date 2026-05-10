@@ -230,10 +230,10 @@ export function LandingView() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, maxWidth: 1200, margin: '0 auto' }}>
           {[
-            { step: '01', title: 'Ingest', desc: 'watsonx.data unifies thermal imagery, canopy, zoning, flood surfaces, air-quality feeds, and IoT signals into a lakehouse.' },
-            { step: '02', title: 'Score', desc: 'watsonx.ai scores each block across heat vulnerability and related environmental risk - ranking interventions by cost-effectiveness.' },
-            { step: '03', title: 'Automate', desc: 'watsonx Orchestrate detects anomalies and routes intervention briefs to the correct city department automatically.' },
-            { step: '04', title: 'Monitor', desc: 'watsonx.governance audits whether resources reach low-income zones equitably - flagging disparity in real time.' },
+            { step: '01', title: 'Ingest', desc: 'NASA FIRMS hotspot data, OpenAQ air-quality readings, Sentinel Hub thermal imagery, and zoning/flood layers flow into PostgreSQL—unified at block-level resolution.' },
+            { step: '02', title: 'Score', desc: 'Rule-based vulnerability (heat + canopy + air) + Granite TTM heat forecasting + AutoAI feature weighting rank blocks and interventions by impact-per-dollar.' },
+            { step: '03', title: 'Automate', desc: 'Work orders auto-route to city departments when equity thresholds trigger—flagging high-vulnerability blocks with intervention briefs and ROI estimates.' },
+            { step: '04', title: 'Monitor', desc: 'Featherless AI (Qwen) generates actionable insights per block; equity alerts track whether resources reach low-income zones—live dashboards show disparity trends.' },
           ].map((item) => (
             <div key={item.step} style={{
               background: 'var(--cl-card)',

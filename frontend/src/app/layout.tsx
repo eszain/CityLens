@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { DemoProvider } from '@/components/DemoProvider';
+import { PetitionStoreProvider } from '@/components/PetitionStore';
 
 export const metadata: Metadata = {
   title: 'CityLens',
@@ -20,7 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body>
         <DemoProvider>
-          {children}
+          <PetitionStoreProvider>
+            {children}
+          </PetitionStoreProvider>
         </DemoProvider>
       </body>
     </html>

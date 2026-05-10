@@ -7,12 +7,15 @@ import { useDemoMode } from '@/components/DemoProvider';
 import { InfoPanel } from '@/components/InfoPanel';
 import { MapView } from '@/components/MapView';
 import { NavBar } from '@/components/NavBar';
+import { PetitionPanel } from '@/components/PetitionPanel';
+import { usePetitionStore } from '@/components/PetitionStore';
 import {
   fetchBlocks,
   fetchCityStats,
   fetchEquityAlerts,
   fetchWorkOrders,
 } from '@/lib/api';
+import type { PetitionDoc } from '@/lib/petition';
 import type { ActiveView, Block, CityStats, EquityAlert, WorkOrder } from '@/types';
 
 const VIEWS: { id: ActiveView; label: string }[] = [
@@ -54,6 +57,16 @@ export function HomeShell({ rightPanel }: HomeShellProps) {
   const [show3DBuildings, setShow3DBuildings] = useState(false);
   const viewMenuRef = useRef<HTMLDivElement>(null);
   const mapFeaturesRef = useRef<HTMLDivElement>(null);
+
+  const { addDraft, selectDraft, selectedDraft: petitionDoc } = usePetitionStore();
+  const handlePetitionReady = useCallback(
+    (doc: PetitionDoc) => {
+      addDraft(doc);
+      setRightOpen(true);
+    },
+    [addDraft],
+  );
+  const closePetition = useCallback(() => selectDraft(null), [selectDraft]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -350,6 +363,7 @@ export function HomeShell({ rightPanel }: HomeShellProps) {
                 setActiveView={setActiveView}
                 workOrders={workOrders}
                 equityAlerts={equityAlerts}
+                onPetitionReady={handlePetitionReady}
               />
             </div>
             <button
@@ -396,12 +410,12 @@ export function HomeShell({ rightPanel }: HomeShellProps) {
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--cl-surface)]">
               <div className="shrink-0 border-b border-[var(--cl-border)] px-6 pb-3.5 pt-5">
                 <p className="font-display text-sm font-semibold text-[var(--cl-text-secondary)]">
-                  Overview
+                  {petitionDoc ? 'Petition draft' : 'Overview'}
                 </p>
                 <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--cl-text-muted)]">
-                  Toronto
+                  {petitionDoc ? petitionDoc.block.name : 'Toronto'}
                 </p>
-                {cityStats && (
+                {!petitionDoc && cityStats && (
                   <div className="mt-3 flex gap-4 border-t border-[var(--cl-border)] pt-3">
                     <PanelStat label="Critical" value={cityStats.criticalZones} color="var(--cl-red-400)" info="Blocks where the composite vulnerability score (heat, income, and coverage) reaches 85 or above out of 100." />
                     <PanelStat label="Avg Δ°C" value={`+${cityStats.avgTemperatureDelta}°C`} color="var(--cl-heat-700)" info="Mean surface temperature excess above a 22 °C urban baseline, averaged across all monitored blocks." />
@@ -415,7 +429,11 @@ export function HomeShell({ rightPanel }: HomeShellProps) {
                 )}
               </div>
               <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain bg-[var(--cl-surface)] px-1 pb-8 pt-1">
-                {rightPanel}
+                {petitionDoc ? (
+                  <PetitionPanel doc={petitionDoc} onClose={closePetition} />
+                ) : (
+                  rightPanel
+                )}
               </div>
             </div>
           </div>
