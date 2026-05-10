@@ -2,6 +2,10 @@
 
 import { useMemo } from 'react';
 import type { Block, WorkOrder, EquityAlert, CityStats } from '@/types';
+import { AccentCard } from '@/components/ui/accent-card';
+import { MetricTile } from '@/components/ui/metric-tile';
+import { SectionLabel } from '@/components/ui/section-label';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 interface Props {
   blocks: Block[];
@@ -116,10 +120,10 @@ function AnalyticsTab({ blocks, cityStats, equityAlerts, selectedBlock, loading 
         <div>
           <SectionLabel>CITY OVERVIEW</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            <StatCard label="Blocks Monitored" value={cityStats.blocksMonitored.toLocaleString()} color="var(--cl-green-800)" />
-            <StatCard label="Equity Score" value={`${cityStats.equityScore}/100`} color={cityStats.equityScore < 50 ? 'var(--cl-red-400)' : 'var(--cl-green-800)'} />
-            <StatCard label="Critical Zones" value={cityStats.criticalZones} color="var(--cl-red-400)" />
-            <StatCard label="Active Orders" value={cityStats.activeWorkOrders} color="var(--cl-heat-700)" />
+            <MetricTile compact label="Blocks Monitored" value={cityStats.blocksMonitored.toLocaleString()} color="var(--cl-green-800)" />
+            <MetricTile compact label="Equity Score" value={`${cityStats.equityScore}/100`} color={cityStats.equityScore < 50 ? 'var(--cl-red-400)' : 'var(--cl-green-800)'} />
+            <MetricTile compact label="Critical Zones" value={cityStats.criticalZones} color="var(--cl-red-400)" />
+            <MetricTile compact label="Active Orders" value={cityStats.activeWorkOrders} color="var(--cl-heat-700)" />
           </div>
         </div>
       )}
@@ -311,30 +315,16 @@ function WorkOrdersTab({ workOrders, loading }: { workOrders: WorkOrder[]; loadi
   );
 }
 
+const SEVERITY_BORDER: Record<WorkOrder['severity'], string> = {
+  critical: 'var(--cl-red-500)',
+  high:     'var(--cl-heat-500)',
+  medium:   'var(--cl-heat-300)',
+  low:      'var(--cl-green-500)',
+};
+
 function WorkOrderCard({ wo }: { wo: WorkOrder }) {
-  const statusColors = {
-    pending: 'var(--cl-heat-300)',
-    dispatched: 'var(--cl-heat-700)',
-    in_progress: 'var(--cl-green-800)',
-    completed: 'var(--cl-text-muted)',
-  };
-
-  const severityBorder = {
-    critical: 'var(--cl-red-500)',
-    high: 'var(--cl-heat-500)',
-    medium: 'var(--cl-heat-300)',
-    low: 'var(--cl-green-500)',
-  };
-
   return (
-    <div style={{
-      background: 'var(--cl-card)',
-      border: '1px solid var(--cl-border)',
-      borderLeft: `3px solid ${severityBorder[wo.severity]}`,
-      borderRadius: 8,
-      padding: '10px 12px',
-      marginBottom: 6,
-    }}>
+    <AccentCard accentColor={SEVERITY_BORDER[wo.severity]} style={{ marginBottom: 6 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
         <div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 600, color: 'var(--cl-text-primary)', marginBottom: 2 }}>
@@ -342,17 +332,7 @@ function WorkOrderCard({ wo }: { wo: WorkOrder }) {
           </div>
           <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--cl-text-muted)' }}>{wo.department}</div>
         </div>
-        <span style={{
-          fontFamily: 'var(--font-body)',
-          fontSize: 9,
-          color: statusColors[wo.status],
-          border: `1px solid ${statusColors[wo.status]}40`,
-          padding: '2px 6px',
-          borderRadius: 4,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          flexShrink: 0,
-        }}>{wo.status.replace('_', ' ')}</span>
+        <StatusBadge status={wo.status} />
       </div>
       <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--cl-text-secondary)', lineHeight: 1.4 }}>
         {wo.intervention}
@@ -362,31 +342,7 @@ function WorkOrderCard({ wo }: { wo: WorkOrder }) {
           ETA: {new Date(wo.estimatedCompletion).toLocaleDateString('en-CA')}
         </div>
       )}
-    </div>
+    </AccentCard>
   );
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600,
-      color: 'var(--cl-text-secondary)', marginBottom: 8, paddingBottom: 6,
-      borderBottom: '1px solid var(--cl-border)',
-    }}>{children}</div>
-  );
-}
-
-function StatCard({ label, value, color }: { label: string; value: string | number; color: string }) {
-  return (
-    <div style={{
-      background: 'var(--cl-card)',
-      border: '1px solid var(--cl-border)',
-      borderRadius: 6,
-      padding: '8px 10px',
-    }}>
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--cl-text-muted)', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color, letterSpacing: '-0.02em' }}>{value}</div>
-    </div>
-  );
-}

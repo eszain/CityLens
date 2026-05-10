@@ -178,6 +178,11 @@ export interface MapViewProps {
   demoMode: boolean;
   /** Offset layers control when left overlay is open (336px open / 56px collapsed per layout doc). */
   leftPanelOpen?: boolean;
+  showLandmarks?: boolean;
+  showTransit?: boolean;
+  showPlaceLabels?: boolean;
+  showRoadLabels?: boolean;
+  show3DBuildings?: boolean;
 }
 
 export function MapView({
@@ -188,6 +193,11 @@ export function MapView({
   loading,
   demoMode,
   leftPanelOpen = true,
+  showLandmarks = false,
+  showTransit = false,
+  showPlaceLabels = false,
+  showRoadLabels = false,
+  show3DBuildings = false,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -438,6 +448,11 @@ export function MapView({
     setMapReady(false);
 
     map.on("load", () => {
+      map.setConfigProperty("basemap", "showPointOfInterestLabels", false);
+      map.setConfigProperty("basemap", "showTransitLabels", false);
+      map.setConfigProperty("basemap", "showPlaceLabels", false);
+      map.setConfigProperty("basemap", "showRoadLabels", false);
+      map.setConfigProperty("basemap", "show3dObjects", false);
       try {
         if (!map.getSource("blocks")) {
           map.addSource("blocks", { type: "geojson", data: EMPTY_GEOJSON_FC });
@@ -572,6 +587,36 @@ export function MapView({
       setLayers((prev) => prev.map((l) => (layerNeedsLiveApi(l.id) ? { ...l, active: false } : l)));
     }
   }, [mapReady, demoMode]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    map.setConfigProperty("basemap", "showPointOfInterestLabels", showLandmarks);
+  }, [showLandmarks, mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    map.setConfigProperty("basemap", "showTransitLabels", showTransit);
+  }, [showTransit, mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    map.setConfigProperty("basemap", "showPlaceLabels", showPlaceLabels);
+  }, [showPlaceLabels, mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    map.setConfigProperty("basemap", "showRoadLabels", showRoadLabels);
+  }, [showRoadLabels, mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    map.setConfigProperty("basemap", "show3dObjects", show3DBuildings);
+  }, [show3DBuildings, mapReady]);
 
   useEffect(() => {
     const map = mapRef.current;

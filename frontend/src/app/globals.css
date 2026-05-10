@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 @import "../../node_modules/tw-animate-css/dist/tw-animate.css";
 @import "shadcn/tailwind.css";
@@ -36,8 +36,8 @@
   --cl-map-overlay: rgba(38, 34, 30, 0.92);
   --cl-map-overlay-border: rgba(232, 226, 214, 0.2);
   --font-display: 'Fraunces', 'Georgia', serif;
-  --font-body: 'Source Sans 3', system-ui, sans-serif;
-  --font-mono: 'DM Sans', system-ui, sans-serif;
+  --font-body: 'Roboto', system-ui, sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
   --sidebar-w: 300px;
   --panel-w: 320px;
   --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
@@ -167,6 +167,25 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+  }
+
+  button,
+  a,
+  [role="button"],
+  [role="tab"],
+  [role="checkbox"],
+  [role="radio"],
+  [role="menuitem"],
+  [role="option"],
+  [role="switch"],
+  select,
+  label[for],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="submit"],
+  input[type="reset"],
+  input[type="file"] {
+    cursor: pointer;
   }
 }
 

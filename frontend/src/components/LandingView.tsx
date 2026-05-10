@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { CityLensLogo } from '@/components/CityLensLogo';
 import { useDemoMode } from '@/components/DemoProvider';
+import { DemoToggle } from '@/components/ui/demo-toggle';
 
 const STATS = [
   { value: '5-8°C', label: 'hotter in low-income zones' },
@@ -54,31 +55,7 @@ export function LandingView() {
             <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--cl-text-muted)', fontWeight: 500 }}>
               Demo data
             </span>
-            <button
-              type="button"
-              onClick={() => setDemoMode(!demoMode)}
-              style={{
-                width: 40,
-                height: 22,
-                borderRadius: 11,
-                border: '1px solid var(--cl-border-bright)',
-                background: demoMode ? 'var(--cl-green-700)' : 'var(--cl-card)',
-                position: 'relative',
-                cursor: 'pointer',
-                transition: 'var(--transition)',
-              }}
-            >
-              <span style={{
-                position: 'absolute',
-                top: 2,
-                left: demoMode ? 20 : 2,
-                width: 16,
-                height: 16,
-                borderRadius: '50%',
-                background: demoMode ? 'var(--cl-on-accent)' : 'var(--cl-text-muted)',
-                transition: 'var(--transition)',
-              }} />
-            </button>
+            <DemoToggle checked={demoMode} onChange={setDemoMode} />
           </label>
 
           <Link href="/map" style={{
