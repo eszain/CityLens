@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { CityLensLogo } from "@/components/CityLensLogo";
 import { useDemoMode } from "@/components/DemoProvider";
 import { DemoToggle } from "@/components/ui/demo-toggle";
@@ -10,27 +9,8 @@ interface Props {
   onRefresh: () => void;
 }
 
-const routeLink = (path: string, current: string | null, label: string) => {
-  const on = current === path;
-  return (
-    <Link
-      href={path}
-      style={{
-        fontFamily: "var(--font-body)",
-        fontSize: 13,
-        fontWeight: on ? 600 : 500,
-        color: on ? "var(--cl-text-primary)" : "var(--cl-text-muted)",
-        textDecoration: "none",
-      }}
-    >
-      {label}
-    </Link>
-  );
-};
-
 export function NavBar({ onRefresh }: Props) {
   const { demoMode, setDemoMode } = useDemoMode();
-  const pathname = usePathname();
 
   return (
     <nav
@@ -65,17 +45,6 @@ export function NavBar({ onRefresh }: Props) {
         CityLens
       </Link>
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          marginRight: "auto",
-        }}
-      >
-        {routeLink("/map", pathname, "Map")}
-      </div>
-
       {/* Refresh */}
       <button
         onClick={onRefresh}
@@ -88,6 +57,7 @@ export function NavBar({ onRefresh }: Props) {
           cursor: "pointer",
           fontFamily: "var(--font-body)",
           fontSize: 13,
+          marginLeft: "auto",
           marginRight: 12,
           transition: "var(--transition)",
         }}
@@ -120,4 +90,3 @@ export function NavBar({ onRefresh }: Props) {
     </nav>
   );
 }
-
