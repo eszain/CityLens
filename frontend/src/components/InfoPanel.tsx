@@ -120,7 +120,7 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
       <SectionLabel collapsed={!open.priority} onToggle={() => toggle('priority')}>
         High-priority areas
       </SectionLabel>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+      {open.priority && <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
         <input
           type="search"
           placeholder="Search areas…"
@@ -156,7 +156,7 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
         >
           {sortDir === 'desc' ? '↓ Desc' : '↑ Asc'}
         </button>
-      </div>
+      </div>}
 
       {open.priority && (
         loading ? (
