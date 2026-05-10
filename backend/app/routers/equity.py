@@ -69,11 +69,11 @@ async def equity_report(
     ]
 
     if export_format == "csv":
-        header = "block_id,external_id,vulnerability_score,income_median_cad,low_income_flag,resources_deployed,equity_score,alert\n"
+        header = "name,external_id,vulnerability_score,income_median_cad,low_income_flag,resources_deployed,equity_score,alert\n"
         lines = [header]
         for b in blocks:
             lines.append(
-                f"{b.get('block_id','')},{b.get('external_id','')},"
+                f"{b.get('name','')},{b.get('external_id','')},"
                 f"{b.get('vulnerability_score','')},{b.get('income_median_cad','')},"
                 f"{b.get('low_income_flag','')},{b.get('resources_deployed','')},"
                 f"{b.get('equity_score','')},{b.get('alert_under_resourced','')}\n"

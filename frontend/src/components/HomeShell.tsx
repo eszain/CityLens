@@ -2,6 +2,7 @@
 
 import { Building2, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useDemoMode } from '@/components/DemoProvider';
 import { InfoPanel } from '@/components/InfoPanel';
 import { MapView } from '@/components/MapView';
@@ -385,8 +386,8 @@ export function HomeShell({ rightPanel }: HomeShellProps) {
           <div className="flex h-full min-h-0 w-full min-w-0 flex-row">
             <button
               type="button"
-              aria-label="Collapse dashboard panel"
-              title="Hide dashboard"
+              aria-label="Collapse overview panel"
+              title="Hide overview"
               onClick={() => setRightOpen(false)}
               className="flex w-8 shrink-0 items-center justify-center border-r border-[var(--cl-border)] bg-[var(--cl-card)] text-[var(--cl-text-muted)] transition-colors hover:bg-[var(--cl-card-hover)] hover:text-[var(--cl-text-primary)]"
             >
@@ -395,19 +396,20 @@ export function HomeShell({ rightPanel }: HomeShellProps) {
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--cl-surface)]">
               <div className="shrink-0 border-b border-[var(--cl-border)] px-6 pb-3.5 pt-5">
                 <p className="font-display text-sm font-semibold text-[var(--cl-text-secondary)]">
-                  Dashboard
+                  Overview
                 </p>
                 <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--cl-text-muted)]">
-                  Equity · Toronto
+                  Toronto
                 </p>
                 {cityStats && (
                   <div className="mt-3 flex gap-4 border-t border-[var(--cl-border)] pt-3">
-                    <PanelStat label="Critical" value={cityStats.criticalZones} color="var(--cl-red-400)" />
-                    <PanelStat label="Avg Δ°C" value={`+${cityStats.avgTemperatureDelta}°C`} color="var(--cl-heat-700)" />
+                    <PanelStat label="Critical" value={cityStats.criticalZones} color="var(--cl-red-400)" info="Blocks where the composite vulnerability score (heat, income, and coverage) reaches 85 or above out of 100." />
+                    <PanelStat label="Avg Δ°C" value={`+${cityStats.avgTemperatureDelta}°C`} color="var(--cl-heat-700)" info="Mean surface temperature excess above a 22 °C urban baseline, averaged across all monitored blocks." />
                     <PanelStat
                       label="Equity"
                       value={`${cityStats.equityScore}/100`}
                       color={cityStats.equityScore < 50 ? 'var(--cl-red-400)' : 'var(--cl-green-800)'}
+                      info="Resource deployment rate relative to vulnerability among low-income blocks — higher means resources better track need."
                     />
                   </div>
                 )}
@@ -420,8 +422,8 @@ export function HomeShell({ rightPanel }: HomeShellProps) {
         ) : (
           <button
             type="button"
-            aria-label="Expand dashboard panel"
-            title="Show equity dashboard"
+            aria-label="Expand overview panel"
+            title="Show overview"
             onClick={() => setRightOpen(true)}
             className="flex h-full w-10 shrink-0 items-center justify-center border-r border-[var(--cl-border)] bg-[var(--cl-card)] text-[var(--cl-text-muted)] transition-colors hover:bg-[var(--cl-card-hover)] hover:text-[var(--cl-text-primary)]"
           >
@@ -443,11 +445,60 @@ function getMapSeverity(block: Block, view: ActiveView): number {
   }
 }
 
-function PanelStat({ label, value, color }: { label: string; value: string | number; color: string }) {
+function InfoTip({ text }: { text: string }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const handleEnter = () => {
+    if (!btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect();
+    const tipW = 200;
+    const margin = 8;
+    const left = Math.max(margin, Math.min(r.left + r.width / 2 - tipW / 2, window.innerWidth - tipW - margin));
+    setPos({ top: r.top - 8, left });
+  };
+
+  const tooltip = pos ? createPortal(
+    <div style={{
+      position: 'fixed',
+      top: pos.top,
+      left: pos.left,
+      transform: 'translateY(-100%)',
+      background: 'var(--cl-black)',
+      color: 'var(--cl-on-accent)',
+      fontFamily: 'var(--font-body)',
+      fontSize: 11,
+      lineHeight: 1.5,
+      padding: '6px 10px',
+      borderRadius: 6,
+      width: 200,
+      zIndex: 99999,
+      pointerEvents: 'none',
+      textAlign: 'left',
+    }}>
+      {text}
+    </div>,
+    document.body,
+  ) : null;
+
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle' }}>
+      <button
+        ref={btnRef}
+        onMouseEnter={handleEnter}
+        onMouseLeave={() => setPos(null)}
+        style={{ background: 'transparent', border: 'none', color: 'var(--cl-text-muted)', fontSize: 9, lineHeight: 1, cursor: 'pointer', padding: '0 2px', opacity: 0.65 }}
+      >ℹ</button>
+      {tooltip}
+    </span>
+  );
+}
+
+function PanelStat({ label, value, color, info }: { label: string; value: string | number; color: string; info?: string }) {
   return (
     <div style={{ textAlign: 'center', flex: 1 }}>
-      <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--cl-text-muted)', fontWeight: 500, marginBottom: 1 }}>
-        {label}
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--cl-text-muted)', fontWeight: 500, marginBottom: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+        {label}{info && <InfoTip text={info} />}
       </div>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, color, letterSpacing: '-0.02em' }}>
         {value}

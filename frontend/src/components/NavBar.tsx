@@ -77,7 +77,7 @@ export function NavBar({ onRefresh }: Props) {
         <span style={{ color: "var(--cl-border-bright)", userSelect: "none" }}>
           ·
         </span>
-        {routeLink("/dashboard", pathname, "Dashboard")}
+        {routeLink("/dashboard", pathname, "Overview")}
       </div>
 
       {/* Refresh */}

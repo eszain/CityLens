@@ -83,7 +83,7 @@ export function LandingView() {
             background: 'var(--cl-card)',
             transition: 'var(--transition)',
           }}>
-            Dashboard
+            Overview
           </Link>
         </div>
       </nav>
@@ -164,7 +164,7 @@ export function LandingView() {
             textDecoration: 'none',
             background: 'var(--cl-card)',
           }}>
-            Dashboard
+            Overview
           </Link>
           <a href="#how" style={{
             fontFamily: 'var(--font-body)',

@@ -7,12 +7,6 @@ import { buildDemoEquityReport } from '@/lib/demoData';
 import type { EquityReport } from '@/types';
 import { cn } from '@/lib/utils';
 
-function formatEquityScore(v: number | null): string {
-  if (v == null || Number.isNaN(v)) return '—';
-  if (v >= 0 && v <= 1) return `${Math.round(v * 100)}%`;
-  return String(v);
-}
-
 const sectionLabelClass =
   'font-display text-sm font-semibold text-[var(--cl-text-secondary)] border-b border-[var(--cl-border)] pb-1.5';
 const insetCardClass =
@@ -114,27 +108,16 @@ export default function DashboardPanel({ embedded = false }: DashboardPanelProps
 
   const metrics = (
     <div className={cn('flex flex-col gap-6', bodyPad)}>
-      <DashboardSection title="Equity score">
-        <div className="flex flex-col gap-4">
-          <p className="font-display text-[clamp(1.35rem,4vw,1.75rem)] font-semibold leading-none tracking-tight text-[var(--cl-green-900)]">
-            {formatEquityScore(report.summary.equity_score)}
-          </p>
-          <p className="text-xs leading-relaxed text-[var(--cl-text-muted)]">
-            Higher means deployments better track vulnerability in low-income blocks (heuristic).
-          </p>
-        </div>
-      </DashboardSection>
-
       <DashboardSection title="Coverage">
         <>
           <dl className="space-y-0 text-[13px] text-[var(--cl-text-secondary)]">
-            <div className="flex justify-between gap-4 border-b border-[var(--cl-border)] py-3.5 pr-2">
+            <div className="flex justify-between gap-4 border-b border-[var(--cl-border)] py-2 pr-2">
               <dt className="max-w-[60%] text-[var(--cl-text-muted)]">Low-income blocks</dt>
               <dd className="shrink-0 pr-1 font-display text-base font-semibold tabular-nums text-[var(--cl-text-primary)]">
                 {report.summary.low_income_blocks}
               </dd>
             </div>
-            <div className="flex justify-between gap-4 py-3.5 pr-2 last:pb-2">
+            <div className="flex justify-between gap-4 py-2 pr-2 last:pb-2">
               <dt className="max-w-[60%] text-[var(--cl-text-muted)]">Under-resourced alerts</dt>
               <dd className="shrink-0 pr-1 font-display text-base font-semibold tabular-nums text-[var(--cl-red-500)]">
                 {report.summary.under_resourced_alerts}
@@ -143,7 +126,7 @@ export default function DashboardPanel({ embedded = false }: DashboardPanelProps
           </dl>
           {(report.summary.mean_vuln_low_income != null ||
             report.summary.mean_deploy_low_income != null) && (
-            <p className="mt-5 border-t border-[var(--cl-border)] py-5 text-[11px] leading-relaxed text-[var(--cl-text-muted)]">
+            <p className="mt-2 border-t border-[var(--cl-border)] py-2 text-[11px] leading-relaxed text-[var(--cl-text-muted)]">
               Avg vulnerability (low-income):{' '}
               <span className="text-[var(--cl-text-secondary)]">
                 {report.summary.mean_vuln_low_income ?? '—'}
@@ -201,7 +184,7 @@ export default function DashboardPanel({ embedded = false }: DashboardPanelProps
           CityLens · Toronto
         </p>
         <h1 className="font-display mt-1.5 text-xl font-semibold tracking-tight text-[var(--cl-text-primary)] sm:text-2xl">
-          City dashboard
+          City overview
         </h1>
         <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--cl-text-secondary)]">
           Equity summary from block and snapshot data. Export CSV for offline analysis or reporting.
