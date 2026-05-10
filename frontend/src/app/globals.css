@@ -189,6 +189,10 @@
   }
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html, body {
   height: 100%;
   background: var(--cl-page);
@@ -198,6 +202,22 @@ html, body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
+}
+
+/* Landing page button animations */
+.cl-btn {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  will-change: transform;
+}
+.cl-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(55, 48, 40, 0.13);
+}
+.cl-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+  opacity: 0.88;
+  transition-duration: 0.08s;
 }
 
 /* Reserve space below fixed demo banner so pages aren’t covered (map uses full-bleed separately). */

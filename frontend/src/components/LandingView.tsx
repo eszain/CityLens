@@ -58,7 +58,7 @@ export function LandingView() {
             <DemoToggle checked={demoMode} onChange={setDemoMode} />
           </label>
 
-          <Link href="/map" style={{
+          <Link href="/map" className="cl-btn" style={{
             fontFamily: 'var(--font-body)',
             fontSize: 14,
             fontWeight: 600,
@@ -67,11 +67,10 @@ export function LandingView() {
             padding: '8px 20px',
             borderRadius: 10,
             textDecoration: 'none',
-            transition: 'var(--transition)',
           }}>
             Open map
           </Link>
-          <Link href="/dashboard" style={{
+          <Link href="/dashboard" className="cl-btn" style={{
             fontFamily: 'var(--font-body)',
             fontSize: 14,
             fontWeight: 600,
@@ -81,7 +80,6 @@ export function LandingView() {
             borderRadius: 10,
             textDecoration: 'none',
             background: 'var(--cl-card)',
-            transition: 'var(--transition)',
           }}>
             Overview
           </Link>
@@ -141,7 +139,7 @@ export function LandingView() {
         </p>
 
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <Link href="/map" style={{
+          <Link href="/map" className="cl-btn" style={{
             fontFamily: 'var(--font-body)',
             fontSize: 16,
             fontWeight: 600,
@@ -153,7 +151,7 @@ export function LandingView() {
           }}>
             Open map
           </Link>
-          <Link href="/dashboard" style={{
+          <Link href="/dashboard" className="cl-btn" style={{
             fontFamily: 'var(--font-body)',
             fontSize: 16,
             fontWeight: 600,
@@ -166,7 +164,7 @@ export function LandingView() {
           }}>
             Overview
           </Link>
-          <a href="#how" style={{
+          <a href="#how" className="cl-btn" style={{
             fontFamily: 'var(--font-body)',
             fontSize: 16,
             fontWeight: 600,
