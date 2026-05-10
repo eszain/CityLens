@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { CityStats } from "@/types";
 import { CityLensLogo } from "@/components/CityLensLogo";
 import { useDemoMode } from "@/components/DemoProvider";
 import { DemoToggle } from "@/components/ui/demo-toggle";
 
 interface Props {
-  cityStats: CityStats | null;
   onRefresh: () => void;
 }
 
@@ -30,7 +28,7 @@ const routeLink = (path: string, current: string | null, label: string) => {
   );
 };
 
-export function NavBar({ cityStats, onRefresh }: Props) {
+export function NavBar({ onRefresh }: Props) {
   const { demoMode, setDemoMode } = useDemoMode();
   const pathname = usePathname();
 
@@ -82,31 +80,6 @@ export function NavBar({ cityStats, onRefresh }: Props) {
         {routeLink("/dashboard", pathname, "Dashboard")}
       </div>
 
-      {/* Live stats */}
-      {cityStats && (
-        <div style={{ display: "flex", gap: 20, margin: "0 20px" }}>
-          <Stat
-            label="Critical"
-            value={cityStats.criticalZones}
-            color="var(--cl-red-400)"
-          />
-          <Stat
-            label="Avg Δ°C"
-            value={`+${cityStats.avgTemperatureDelta}°C`}
-            color="var(--cl-heat-700)"
-          />
-          <Stat
-            label="Equity"
-            value={`${cityStats.equityScore}/100`}
-            color={
-              cityStats.equityScore < 50
-                ? "var(--cl-red-400)"
-                : "var(--cl-green-800)"
-            }
-          />
-        </div>
-      )}
-
       {/* Refresh */}
       <button
         onClick={onRefresh}
@@ -152,39 +125,3 @@ export function NavBar({ cityStats, onRefresh }: Props) {
   );
 }
 
-function Stat({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string | number;
-  color: string;
-}) {
-  return (
-    <div style={{ textAlign: "center" }}>
-      <div
-        style={{
-          fontFamily: "var(--font-body)",
-          fontSize: 11,
-          color: "var(--cl-text-muted)",
-          marginBottom: 1,
-          fontWeight: 500,
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontFamily: "var(--font-display)",
-          fontSize: 14,
-          fontWeight: 700,
-          color,
-          letterSpacing: "-0.02em",
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}

@@ -20,6 +20,16 @@ interface Props {
   equityAlerts: EquityAlert[];
 }
 
+function getSortValue(block: Block, view: ActiveView): number {
+  switch (view) {
+    case 'heat':   return block.heatScore;
+    case 'equity': return -block.incomeDecile;
+    case 'canopy': return -block.treeCanopy;
+    case 'flood':  return ({ high: 3, medium: 2, low: 1 } as const)[block.floodRisk];
+    case 'aqi':    return block.airQualityIndex;
+  }
+}
+
 export function InfoPanel({
   selectedBlock,
   setSelectedBlock,
@@ -28,11 +38,12 @@ export function InfoPanel({
   demoMode,
   equityAlerts,
   workOrders,
-  activeView: _activeView,
+  activeView,
   setActiveView: _setActiveView,
 }: Props) {
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   async function handleCreateOrder(block: Block, interventionType: string) {
     setCreatingOrder(true);
@@ -47,7 +58,12 @@ export function InfoPanel({
     }
   }
 
-  const criticalBlocks = blocks.filter(b => b.severity === 'critical');
+  const criticalBlocks = blocks
+    .filter(b => b.severity === 'critical')
+    .sort((a, b) => sortDir === 'desc'
+      ? getSortValue(b, activeView) - getSortValue(a, activeView)
+      : getSortValue(a, activeView) - getSortValue(b, activeView)
+    );
 
   return (
     <aside style={{
@@ -73,6 +89,8 @@ export function InfoPanel({
           equityAlerts={equityAlerts}
           workOrders={workOrders}
           setSelectedBlock={setSelectedBlock}
+          sortDir={sortDir}
+          setSortDir={setSortDir}
         />
       )}
     </aside>
@@ -80,21 +98,65 @@ export function InfoPanel({
 }
 
 // ─── Default (no selection) ───────────────────────────────────────────────────
-function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSelectedBlock }: {
+function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSelectedBlock, sortDir, setSortDir }: {
   loading: boolean;
   criticalBlocks: Block[];
   equityAlerts: any[];
   workOrders: any[];
   setSelectedBlock: (b: Block) => void;
+  sortDir: 'asc' | 'desc';
+  setSortDir: (d: 'asc' | 'desc') => void;
 }) {
   const [open, setOpen] = useState({ priority: true, alerts: true, orders: true });
+  const [search, setSearch] = useState('');
   const toggle = (key: keyof typeof open) => setOpen(s => ({ ...s, [key]: !s[key] }));
+
+  const visibleBlocks = search.trim()
+    ? criticalBlocks.filter(b => b.name.toLowerCase().includes(search.toLowerCase()))
+    : criticalBlocks;
 
   return (
     <div style={{ padding: '16px 14px' }}>
       <SectionLabel collapsed={!open.priority} onToggle={() => toggle('priority')}>
         High-priority areas
       </SectionLabel>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+        <input
+          type="search"
+          placeholder="Search areas…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            flex: 1,
+            background: 'var(--cl-card)',
+            border: '1px solid var(--cl-border)',
+            borderRadius: 6,
+            padding: '5px 10px',
+            fontFamily: 'var(--font-body)',
+            fontSize: 12,
+            color: 'var(--cl-text-primary)',
+            outline: 'none',
+          }}
+        />
+        <button
+          onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
+          style={{
+            flexShrink: 0,
+            background: 'transparent',
+            border: '1px solid var(--cl-border)',
+            color: 'var(--cl-text-muted)',
+            fontFamily: 'var(--font-body)',
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '5px 10px',
+            borderRadius: 6,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {sortDir === 'desc' ? '↓ Desc' : '↑ Asc'}
+        </button>
+      </div>
 
       {open.priority && (
         loading ? (
@@ -102,7 +164,7 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
             <div key={i} className="loading-shimmer" style={{ height: 60, borderRadius: 8, marginBottom: 6 }} />
           ))
         ) : (
-          criticalBlocks.map(block => (
+          visibleBlocks.map(block => (
             <button key={block.id} onClick={() => setSelectedBlock(block)} style={{
               width: '100%',
               background: 'var(--cl-card)',
