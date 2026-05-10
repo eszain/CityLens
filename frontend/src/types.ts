@@ -5,6 +5,7 @@ export type {
   WorkOrder,
   EquityAlert,
   CityStats,
+  EquityReport,
 } from '@/lib/index';
 
 export type ActiveView = 'heat' | 'equity' | 'canopy' | 'flood' | 'aqi';

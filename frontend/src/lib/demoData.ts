@@ -1,4 +1,4 @@
-import type { Block, WorkOrder, EquityAlert, CityStats } from '@/types';
+import type { Block, WorkOrder, EquityAlert, CityStats, EquityReport } from '@/types';
 
 export const DEMO_BLOCKS: Block[] = [
   {
@@ -186,3 +186,20 @@ export const DEMO_CITY_STATS: CityStats = {
   criticalZones: 4,
   workOrdersThisWeek: 4,
 };
+
+/** Synthetic equity report aligned with demo blocks/stats (not from the API). */
+export function buildDemoEquityReport(): EquityReport {
+  const lowIncomeBlocks = DEMO_BLOCKS.filter((b) => b.incomeDecile <= 3).length;
+  return {
+    city: 'toronto',
+    as_of: new Date().toISOString(),
+    summary: {
+      equity_score: DEMO_CITY_STATS.equityScore / 100,
+      low_income_blocks: lowIncomeBlocks,
+      under_resourced_alerts: DEMO_EQUITY_ALERTS.length,
+      mean_vuln_low_income: 71.2,
+      mean_deploy_low_income: 36.8,
+    },
+    alerts: DEMO_EQUITY_ALERTS as unknown[],
+  };
+}

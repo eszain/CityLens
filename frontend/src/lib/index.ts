@@ -54,3 +54,17 @@ export interface CityStats {
   criticalZones: number;
   workOrdersThisWeek: number;
 }
+
+/** Shape of `GET /equity/report` — used by dashboard and map rail. */
+export interface EquityReport {
+  city: string;
+  as_of: string;
+  summary: {
+    equity_score: number | null;
+    low_income_blocks: number;
+    under_resourced_alerts: number;
+    mean_vuln_low_income: number | null;
+    mean_deploy_low_income: number | null;
+  };
+  alerts: unknown[];
+}

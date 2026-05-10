@@ -77,6 +77,7 @@ export function HomeShell({ rightPanel }: HomeShellProps) {
           setSelectedBlock={setSelectedBlock}
           activeView={activeView}
           loading={loading}
+          demoMode={demoMode}
           leftPanelOpen={leftOpen}
         />
       </div>

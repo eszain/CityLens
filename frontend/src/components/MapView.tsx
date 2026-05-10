@@ -35,6 +35,31 @@ const DEFAULT_ZOOM = 15.5;
 
 const OVERLAY_KEYS = ["canopy", "zoning", "flood_risk"] as const;
 
+const EMPTY_GEOJSON_FC: GeoJSONFC = { type: "FeatureCollection", features: [] };
+
+function layerNeedsLiveApi(id: string): boolean {
+  if (id === "ai_risk" || id === "air_quality" || id === "firms") return true;
+  return OVERLAY_KEYS.includes(id as (typeof OVERLAY_KEYS)[number]);
+}
+
+function hideLiveApiMapLayers(map: mapboxgl.Map) {
+  const layerIds = [
+    "overlay-canopy",
+    "overlay-canopy-outline",
+    "overlay-zoning",
+    "overlay-zoning-outline",
+    "overlay-flood",
+    "overlay-flood-outline",
+    "aq-circles",
+    "firms-circles",
+    "blocks-ai-fill",
+    "blocks-ai-outline",
+  ];
+  for (const lid of layerIds) {
+    if (map.getLayer(lid)) map.setLayoutProperty(lid, "visibility", "none");
+  }
+}
+
 function heatColor(score: number): string {
   if (score >= 85) return "#a84840";
   if (score >= 70) return "#b8673d";
@@ -88,6 +113,11 @@ export interface MapViewProps {
   setSelectedBlock: (b: Block | null) => void;
   activeView: ActiveView;
   loading: boolean;
+  /**
+   * When true, optional API map layers (AI risk, canopy/zoning/flood overlays, air, FIRMS) are disabled;
+   * the base vulnerability choropleth still loads from the API so the map keeps geographic context.
+   */
+  demoMode: boolean;
   /** Offset layers control when left overlay is open (336px open / 56px collapsed per layout doc). */
   leftPanelOpen?: boolean;
 }
@@ -98,6 +128,7 @@ export function MapView({
   setSelectedBlock,
   activeView,
   loading,
+  demoMode,
   leftPanelOpen = true,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -306,6 +337,11 @@ export function MapView({
 
   const onToggle = useCallback(
     async (id: string, active: boolean) => {
+      if (demoMode && active && layerNeedsLiveApi(id)) {
+        setError("Turn off Demo to load live map layers from the API.");
+        return;
+      }
+
       const next = layersRef.current.map((l) => (l.id === id ? { ...l, active } : l));
       setLayers(next);
 
@@ -324,7 +360,7 @@ export function MapView({
         setError(err instanceof Error ? err.message : "Layer failed to load");
       }
     },
-    [syncAir, syncAiRisk, syncFirms, syncOverlays],
+    [demoMode, syncAir, syncAiRisk, syncFirms, syncOverlays],
   );
 
   useEffect(() => {
@@ -343,11 +379,10 @@ export function MapView({
     mapRef.current = map;
     setMapReady(false);
 
-    map.on("load", async () => {
+    map.on("load", () => {
       try {
-        const fc = await fetchJson<GeoJSONFC>("/blocks/geojson?city=toronto");
         if (!map.getSource("blocks")) {
-          map.addSource("blocks", { type: "geojson", data: fc });
+          map.addSource("blocks", { type: "geojson", data: EMPTY_GEOJSON_FC });
           map.addLayer({
             id: "blocks-fill",
             type: "fill",
@@ -438,6 +473,47 @@ export function MapView({
       mapRef.current = null;
     };
   }, [token]);
+
+  /** Base block polygons + vulnerability (blue choropleth) — always from API when map is ready. */
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const src = map.getSource("blocks") as mapboxgl.GeoJSONSource | undefined;
+    if (!src) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const fc = await fetchJson<GeoJSONFC>("/blocks/geojson?city=toronto");
+        if (cancelled || mapRef.current !== map) return;
+        src.setData(fc);
+        setError(null);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load blocks");
+          src.setData(EMPTY_GEOJSON_FC);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mapReady]);
+
+  /** Demo: hide optional API-driven layers so toggles do not fetch behind the user's back. */
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (demoMode) {
+      hideLiveApiMapLayers(map);
+      setLayers((prev) => prev.map((l) => (layerNeedsLiveApi(l.id) ? { ...l, active: false } : l)));
+    }
+  }, [mapReady, demoMode]);
 
   useEffect(() => {
     const map = mapRef.current;

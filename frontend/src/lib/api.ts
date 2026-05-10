@@ -1,4 +1,11 @@
-import type { Block, WorkOrder, EquityAlert, CityStats, HeatSeverity } from '@/types';
+import type {
+  Block,
+  WorkOrder,
+  EquityAlert,
+  CityStats,
+  HeatSeverity,
+  EquityReport,
+} from '@/types';
 import {
   DEMO_BLOCKS,
   DEMO_WORK_ORDERS,
@@ -23,6 +30,15 @@ export async function fetchJson<T>(path: string): Promise<T> {
   });
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
   return res.json();
+}
+
+/** Live `GET /equity/report` — returns null on network or HTTP errors. */
+export async function fetchEquityReport(): Promise<EquityReport | null> {
+  try {
+    return await fetchJson<EquityReport>('/equity/report?city=toronto');
+  } catch {
+    return null;
+  }
 }
 
 // ─── Live API shapes → UI models ─────────────────────────────────────────────

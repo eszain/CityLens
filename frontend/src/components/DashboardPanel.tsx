@@ -1,26 +1,11 @@
-import { apiBase, fetchJson } from '@/lib/api';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useDemoMode } from '@/components/DemoProvider';
+import { apiBase, fetchEquityReport } from '@/lib/api';
+import { buildDemoEquityReport } from '@/lib/demoData';
+import type { EquityReport } from '@/types';
 import { cn } from '@/lib/utils';
-
-type EquityReport = {
-  city: string;
-  as_of: string;
-  summary: {
-    equity_score: number | null;
-    low_income_blocks: number;
-    under_resourced_alerts: number;
-    mean_vuln_low_income: number | null;
-    mean_deploy_low_income: number | null;
-  };
-  alerts: unknown[];
-};
-
-async function loadReport(): Promise<EquityReport | null> {
-  try {
-    return await fetchJson<EquityReport>('/equity/report?city=toronto');
-  } catch {
-    return null;
-  }
-}
 
 function formatEquityScore(v: number | null): string {
   if (v == null || Number.isNaN(v)) return '—';
@@ -30,7 +15,6 @@ function formatEquityScore(v: number | null): string {
 
 const sectionLabelClass =
   'font-display text-sm font-semibold text-[var(--cl-text-secondary)] border-b border-[var(--cl-border)] pb-1.5';
-/** Red-outlined tiles only: same border treatment as high-priority rows, smaller physical footprint than full-bleed. */
 const insetCardClass =
   'w-full max-w-[248px] rounded-lg border border-[rgba(239,68,68,0.25)] border-l-[3px] border-l-[var(--cl-red-500)] bg-[var(--cl-card)] pl-8 pr-6 pb-8 pt-7 transition-[background-color] duration-150 hover:bg-[var(--cl-card-hover)]';
 
@@ -59,8 +43,32 @@ type DashboardPanelProps = {
   embedded?: boolean;
 };
 
-export default async function DashboardPanel({ embedded = false }: DashboardPanelProps) {
-  const report = await loadReport();
+export default function DashboardPanel({ embedded = false }: DashboardPanelProps) {
+  const { demoMode } = useDemoMode();
+  const [report, setReport] = useState<EquityReport | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      setLoading(true);
+      if (demoMode) {
+        setReport(buildDemoEquityReport());
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      const live = await fetchEquityReport();
+      if (!cancelled) {
+        setReport(live);
+        setLoading(false);
+      }
+    }
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [demoMode]);
+
   const api = apiBase();
 
   const outerClass = embedded
@@ -74,6 +82,16 @@ export default async function DashboardPanel({ embedded = false }: DashboardPane
     ? 'px-3 pb-10 pt-3 sm:px-4'
     : 'px-5 pb-6 pt-2 sm:px-6 sm:pb-8';
 
+  if (loading) {
+    return (
+      <div className={cn(outerClass, embedded ? 'min-h-0' : '')}>
+        <div className={cn(bodyPad, embedded ? 'pt-6' : 'pt-8')}>
+          <p className="text-center text-sm text-[var(--cl-text-muted)]">Loading equity summary…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!report) {
     return (
       <div className={outerClass}>
@@ -85,7 +103,7 @@ export default async function DashboardPanel({ embedded = false }: DashboardPane
                 {api}/equity/report?city=toronto
               </p>
               <p className="mt-2 text-xs text-[var(--cl-text-muted)]">
-                Start the FastAPI server and ensure the database is seeded.
+                Turn off Demo and start the FastAPI server with a seeded database.
               </p>
             </div>
           </DashboardSection>
@@ -146,19 +164,27 @@ export default async function DashboardPanel({ embedded = false }: DashboardPane
         cardClassName="max-w-[268px]"
       >
         <div className="flex w-full flex-col items-center gap-5 px-2 py-2">
-          <a
-            href={`${api}/equity/report?city=toronto&export_format=csv`}
-            className={cn(
-              'flex h-10 w-[200px] max-w-full shrink-0 items-center justify-center rounded-lg px-[10px]',
-              'bg-[var(--cl-green-700)] text-[13px] font-semibold text-[var(--cl-on-accent)]',
-              'transition-[filter,transform] hover:brightness-105 active:translate-y-px',
-            )}
-          >
-            Download CSV
-          </a>
-          <p className="w-full px-1 pb-3 pt-2 text-center text-[11px] leading-relaxed text-[var(--cl-text-muted)]">
-            Snapshot date: {report.as_of}
-          </p>
+          {demoMode ? (
+            <p className="w-full px-1 pb-3 pt-2 text-center text-[11px] leading-relaxed text-[var(--cl-text-muted)]">
+              CSV export uses the live API. Turn off Demo to download a real snapshot.
+            </p>
+          ) : (
+            <>
+              <a
+                href={`${api}/equity/report?city=toronto&export_format=csv`}
+                className={cn(
+                  'flex h-10 w-[200px] max-w-full shrink-0 items-center justify-center rounded-lg px-[10px]',
+                  'bg-[var(--cl-green-700)] text-[13px] font-semibold text-[var(--cl-on-accent)]',
+                  'transition-[filter,transform] hover:brightness-105 active:translate-y-px',
+                )}
+              >
+                Download CSV
+              </a>
+              <p className="w-full px-1 pb-3 pt-2 text-center text-[11px] leading-relaxed text-[var(--cl-text-muted)]">
+                Snapshot date: {report.as_of}
+              </p>
+            </>
+          )}
         </div>
       </DashboardSection>
     </div>
