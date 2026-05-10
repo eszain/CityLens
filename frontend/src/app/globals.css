@@ -297,3 +297,11 @@ body:has(.demo-banner) .dashboard-page-root {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* Mapbox popup close button */
+.mapboxgl-popup-close-button {
+  padding: 6px 10px;
+  font-size: 18px;
+  line-height: 1;
+  color: #78716c;
+}

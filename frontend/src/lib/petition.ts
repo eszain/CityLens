@@ -19,7 +19,6 @@ export interface PetitionDoc {
     heatScore: number;
     temperatureDelta: number;
     treeCanopy: number;
-    impervious: number;
     population: number;
     airQualityIndex: number;
     floodRisk: Block['floodRisk'];
@@ -56,7 +55,6 @@ export function buildBlockContext(block: Block): PetitionDoc['block'] {
     heatScore: block.heatScore,
     temperatureDelta: block.temperatureDelta,
     treeCanopy: block.treeCanopy,
-    impervious: block.impervious,
     population: block.population,
     airQualityIndex: block.airQualityIndex,
     floodRisk: block.floodRisk,

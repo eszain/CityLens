@@ -131,7 +131,6 @@ function mapApiBlockRow(row: ApiBlockRow): Block {
     severity: severityFromVulnerability(heatScore),
     incomeDecile: incomeDecileFromMedian(row.income_median_cad, row.low_income_flag),
     treeCanopy: Math.round(Number(row.canopy_pct ?? 0)),
-    impervious: 0,
     population: row.population ?? 0,
     interventions: [],
     airQualityIndex: row.pm25 != null ? Math.round(Number(row.pm25)) : 50,

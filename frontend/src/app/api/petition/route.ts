@@ -55,7 +55,6 @@ CLIMATE METRICS:
 - Heat score: ${block.heatScore}/100
 - Temperature delta vs city baseline: +${block.temperatureDelta}°C
 - Tree canopy coverage: ${block.treeCanopy}%
-- Impervious surface: ${block.impervious}%
 - Air quality index: ${block.airQualityIndex}
 - Flood risk: ${block.floodRisk}
 

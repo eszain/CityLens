@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { AppRouteNav } from "@/components/AppRouteNav";
 import { apiBase, fetchJson } from "@/lib/api";
+import { DEMO_BLOCKS } from "@/lib/demoData";
 
 type MlScoring = {
   heat_risk?: "low" | "moderate" | "high" | "critical" | null;
@@ -32,11 +33,32 @@ const RISK_COLORS: Record<string, { dot: string; badge: string; text: string; la
   critical: { dot: "bg-red-500",     badge: "bg-red-50     border-red-200",      text: "text-red-800",      label: "Critical" },
 };
 
+function demoBlockToDetail(id: string): BlockDetail | null {
+  const b = DEMO_BLOCKS.find((d) => d.id === id || d.id === decodeURIComponent(id));
+  if (!b) return null;
+  return {
+    id: b.id,
+    name: b.name,
+    external_id: b.id,
+    vulnerability_score: b.heatScore / 10,
+    lst_mean_c: b.temperatureDelta + 28,
+    canopy_pct: b.treeCanopy,
+    interventions: b.interventions.map((iv) => ({
+      intervention_type: iv.label,
+      roi_score: iv.priority,
+      projected_temp_reduction_c: iv.estimatedReduction,
+      cost_estimate_cad: iv.costPerDegree,
+    })),
+    work_orders: [],
+    ml_scoring: null,
+  };
+}
+
 async function loadBlock(id: string): Promise<BlockDetail | null> {
   try {
     return await fetchJson<BlockDetail>(`/blocks/${encodeURIComponent(id)}?city=toronto`);
   } catch {
-    return null;
+    return demoBlockToDetail(id);
   }
 }
 

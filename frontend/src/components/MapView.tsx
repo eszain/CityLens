@@ -501,23 +501,20 @@ export function MapView({
               ? String(f.id)
               : String(f.properties?.external_id ?? "");
           const html = `
-            <div style="font-family:system-ui,sans-serif;min-width:220px">
-              <div style="font-weight:600;margin-bottom:6px">${String(f.properties?.name ?? "Area")}</div>
-              <div style="font-size:13px;color:#334155">Code: ${String(f.properties?.external_id)}</div>
-              <div style="margin-top:8px;font-size:13px">
-                Vulnerability: <strong>${String(f.properties?.vulnerability_score ?? "—")}</strong>
+            <div style="font-family:system-ui,sans-serif;min-width:240px;padding:20px 18px 16px 18px">
+              <div style="font-weight:700;font-size:15px;margin-bottom:4px;color:#1c1917;padding-right:20px">${String(f.properties?.name ?? "Area")}</div>
+              <div style="font-size:12px;color:#78716c;margin-bottom:14px;letter-spacing:0.02em">Code: ${String(f.properties?.external_id)}</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;font-size:13px;color:#44403c">
+                  <span>Vulnerability</span><strong>${String(f.properties?.vulnerability_score ?? "—")}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;color:#44403c">
+                  <span>Canopy</span><span>${String(f.properties?.canopy_pct ?? "—")}%</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;color:#44403c">
+                  <span>LST</span><span>${String(f.properties?.lst_mean_c ?? "—")} °C</span>
+                </div>
               </div>
-              <div style="margin-top:4px;font-size:13px">
-                Canopy %: ${String(f.properties?.canopy_pct ?? "—")}
-              </div>
-              <div style="margin-top:4px;font-size:13px">
-                LST (°C): ${String(f.properties?.lst_mean_c ?? "—")}
-              </div>
-              ${
-                bid
-                  ? `<div style="margin-top:10px"><a style="color:#1d4ed8;font-weight:600" href="/block/${encodeURIComponent(bid)}">Open block detail</a></div>`
-                  : ""
-              }
             </div>`;
           new mapboxgl.Popup({ closeButton: true }).setLngLat(e.lngLat).setHTML(html).addTo(map);
 

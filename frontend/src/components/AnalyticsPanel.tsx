@@ -233,7 +233,6 @@ function AnalyticsTab({ blocks, cityStats, equityAlerts, selectedBlock, loading 
 function BlockSparklines({ block }: { block: Block }) {
   const metrics = [
     { label: 'Heat Score', value: block.heatScore, max: 100, color: block.heatScore > 70 ? 'var(--cl-red-400)' : 'var(--cl-heat-700)' },
-    { label: 'Impervious Surface', value: block.impervious, max: 100, color: 'var(--cl-heat-700)' },
     { label: 'Tree Canopy', value: block.treeCanopy, max: 100, color: 'var(--cl-green-800)' },
     { label: 'Air Quality Index', value: Math.min(block.airQualityIndex, 200), max: 200, color: block.airQualityIndex > 130 ? 'var(--cl-red-400)' : 'var(--cl-heat-300)' },
   ];

@@ -5,7 +5,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b001', name: 'Rexdale (W1)',
     lat: 43.7252, lng: -79.5847,
     heatScore: 92, temperatureDelta: 7.4, severity: 'critical',
-    incomeDecile: 2, treeCanopy: 8, impervious: 87, population: 4820,
+    incomeDecile: 2, treeCanopy: 8, population: 4820,
     airQualityIndex: 145, pm25Ugm3: 145, floodRisk: 'high', floodEdgeM: 35,
     interventions: [
       { type: 'tree_planting', label: 'Street tree program', costPerDegree: 1200, estimatedReduction: 2.1, priority: 9 },
@@ -16,7 +16,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b002', name: 'Scarborough (E7)',
     lat: 43.7731, lng: -79.2578,
     heatScore: 88, temperatureDelta: 6.9, severity: 'critical',
-    incomeDecile: 3, treeCanopy: 11, impervious: 81, population: 6300,
+    incomeDecile: 3, treeCanopy: 11, population: 6300,
     airQualityIndex: 138, pm25Ugm3: 138, floodRisk: 'medium', floodEdgeM: 520,
     interventions: [
       { type: 'permeable_pavement', label: 'Permeable pavement pilot', costPerDegree: 2100, estimatedReduction: 1.4, priority: 7 },
@@ -27,7 +27,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b003', name: 'Jane & Finch',
     lat: 43.7573, lng: -79.5090,
     heatScore: 85, temperatureDelta: 6.2, severity: 'critical',
-    incomeDecile: 1, treeCanopy: 6, impervious: 83, population: 8900,
+    incomeDecile: 1, treeCanopy: 6, population: 8900,
     airQualityIndex: 152, pm25Ugm3: 152, floodRisk: 'high', floodEdgeM: 22,
     interventions: [
       { type: 'tree_planting', label: 'Community forestry', costPerDegree: 900, estimatedReduction: 2.4, priority: 10 },
@@ -38,7 +38,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b004', name: 'Malvern',
     lat: 43.7846, lng: -79.2323,
     heatScore: 79, temperatureDelta: 5.8, severity: 'high',
-    incomeDecile: 2, treeCanopy: 14, impervious: 76, population: 5200,
+    incomeDecile: 2, treeCanopy: 14, population: 5200,
     airQualityIndex: 129, pm25Ugm3: 129, floodRisk: 'medium', floodEdgeM: 780,
     interventions: [
       { type: 'cool_roof', label: 'Cool roof grants', costPerDegree: 1050, estimatedReduction: 1.6, priority: 7 },
@@ -48,7 +48,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b005', name: 'Weston',
     lat: 43.7005, lng: -79.5239,
     heatScore: 74, temperatureDelta: 5.1, severity: 'high',
-    incomeDecile: 3, treeCanopy: 18, impervious: 71, population: 3800,
+    incomeDecile: 3, treeCanopy: 18, population: 3800,
     airQualityIndex: 118, pm25Ugm3: 118, floodRisk: 'low', floodEdgeM: 2100,
     interventions: [
       { type: 'green_space', label: 'Green corridor', costPerDegree: 2200, estimatedReduction: 1.2, priority: 6 },
@@ -58,7 +58,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b006', name: 'Thorncliffe Park',
     lat: 43.7140, lng: -79.3479,
     heatScore: 68, temperatureDelta: 4.3, severity: 'high',
-    incomeDecile: 4, treeCanopy: 22, impervious: 68, population: 7100,
+    incomeDecile: 4, treeCanopy: 22, population: 7100,
     airQualityIndex: 112, pm25Ugm3: 112, floodRisk: 'low', floodEdgeM: 3400,
     interventions: [
       { type: 'tree_planting', label: 'Park expansion', costPerDegree: 1100, estimatedReduction: 1.8, priority: 7 },
@@ -68,7 +68,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b007', name: 'Parkdale',
     lat: 43.6426, lng: -79.4345,
     heatScore: 55, temperatureDelta: 3.1, severity: 'medium',
-    incomeDecile: 5, treeCanopy: 28, impervious: 62, population: 4200,
+    incomeDecile: 5, treeCanopy: 28, population: 4200,
     airQualityIndex: 98, pm25Ugm3: 98, floodRisk: 'low', floodEdgeM: 4800,
     interventions: [
       { type: 'permeable_pavement', label: 'Laneway greening', costPerDegree: 1900, estimatedReduction: 0.9, priority: 5 },
@@ -78,7 +78,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b008', name: 'Kensington',
     lat: 43.6543, lng: -79.4006,
     heatScore: 44, temperatureDelta: 2.2, severity: 'medium',
-    incomeDecile: 6, treeCanopy: 31, impervious: 58, population: 2800,
+    incomeDecile: 6, treeCanopy: 31, population: 2800,
     airQualityIndex: 87, pm25Ugm3: 87, floodRisk: 'low', floodEdgeM: 6200,
     interventions: [],
   },
@@ -86,7 +86,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b009', name: 'Forest Hill',
     lat: 43.6917, lng: -79.4103,
     heatScore: 18, temperatureDelta: 0.4, severity: 'low',
-    incomeDecile: 10, treeCanopy: 62, impervious: 31, population: 3100,
+    incomeDecile: 10, treeCanopy: 62, population: 3100,
     airQualityIndex: 48, pm25Ugm3: 48, floodRisk: 'low', floodEdgeM: 9100,
     interventions: [],
   },
@@ -94,7 +94,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b010', name: 'Rosedale',
     lat: 43.6806, lng: -79.3726,
     heatScore: 12, temperatureDelta: -0.3, severity: 'low',
-    incomeDecile: 10, treeCanopy: 71, impervious: 24, population: 2200,
+    incomeDecile: 10, treeCanopy: 71, population: 2200,
     airQualityIndex: 42, pm25Ugm3: 42, floodRisk: 'low', floodEdgeM: 12500,
     interventions: [],
   },
@@ -102,7 +102,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b011', name: 'Lawrence Heights',
     lat: 43.7254, lng: -79.4428,
     heatScore: 81, temperatureDelta: 6.0, severity: 'critical',
-    incomeDecile: 2, treeCanopy: 10, impervious: 79, population: 5600,
+    incomeDecile: 2, treeCanopy: 10, population: 5600,
     airQualityIndex: 140, pm25Ugm3: 140, floodRisk: 'medium', floodEdgeM: 640,
     interventions: [
       { type: 'tree_planting', label: 'Redevelopment greening', costPerDegree: 850, estimatedReduction: 2.2, priority: 9 },
@@ -112,7 +112,7 @@ export const DEMO_BLOCKS: Block[] = [
     id: 'b012', name: 'East York (Industrial)',
     lat: 43.7018, lng: -79.3181,
     heatScore: 63, temperatureDelta: 4.1, severity: 'high',
-    incomeDecile: 5, treeCanopy: 19, impervious: 74, population: 1900,
+    incomeDecile: 5, treeCanopy: 19, population: 1900,
     airQualityIndex: 108, pm25Ugm3: 108, floodRisk: 'medium', floodEdgeM: 880,
     interventions: [
       { type: 'cool_roof', label: 'Industrial cool roof', costPerDegree: 700, estimatedReduction: 2.1, priority: 8 },

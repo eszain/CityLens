@@ -19,7 +19,6 @@ export interface Block {
   severity: HeatSeverity;
   incomeDecile: number;        // 1=lowest, 10=highest
   treeCanopy: number;          // % coverage
-  impervious: number;          // % impervious surface
   population: number;
   interventions: Intervention[];
   airQualityIndex: number;

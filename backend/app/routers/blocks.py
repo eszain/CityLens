@@ -254,6 +254,7 @@ async def get_block(conn: DbConn, block_id: UUID, city: str = Query("toronto")) 
         "vulnerability_score": row["vulnerability_score"],
         "lst_mean_c": row["lst_mean_c"],
         "canopy_pct": row["canopy_pct"],
+        "population": row.get("population"),
         "geometry": decode_pg_json(row["geom_json"]),
         "lat": row["lat"],
         "lng": row["lng"],
