@@ -7,6 +7,8 @@ import { AccentCard } from '@/components/ui/accent-card';
 import { MetricTile } from '@/components/ui/metric-tile';
 import { SectionLabel } from '@/components/ui/section-label';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { PetitionDraftButton } from '@/components/PetitionDraftDialog';
+import type { PetitionDoc } from '@/lib/petition';
 
 interface Props {
   selectedBlock: Block | null;
@@ -18,6 +20,7 @@ interface Props {
   setActiveView: (v: ActiveView) => void;
   workOrders: WorkOrder[];
   equityAlerts: EquityAlert[];
+  onPetitionReady: (doc: PetitionDoc) => void;
 }
 
 function getSortValue(block: Block, view: ActiveView): number {
@@ -40,6 +43,7 @@ export function InfoPanel({
   workOrders,
   activeView,
   setActiveView: _setActiveView,
+  onPetitionReady,
 }: Props) {
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
@@ -82,6 +86,7 @@ export function InfoPanel({
           creatingOrder={creatingOrder}
           orderSuccess={orderSuccess}
           demoMode={demoMode}
+          onPetitionReady={onPetitionReady}
         />
       ) : (
         <DefaultPanel
@@ -108,7 +113,7 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
   sortDir: 'asc' | 'desc';
   setSortDir: (d: 'asc' | 'desc') => void;
 }) {
-  const [open, setOpen] = useState({ priority: true, alerts: true, orders: true });
+  const [open, setOpen] = useState({ priority: true, alerts: true });
   const [search, setSearch] = useState('');
   const toggle = (key: keyof typeof open) => setOpen(s => ({ ...s, [key]: !s[key] }));
 
@@ -210,46 +215,23 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
             color: 'var(--cl-red-300)',
             lineHeight: 1.5,
           }}>{alert.message}</div>
-          <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--cl-text-muted)', marginTop: 4 }}>
-            +{alert.responseTimeGap}d gap vs wealthy zones
-          </div>
         </div>
       ))}
 
-      <SectionLabel style={{ marginTop: 20 }} collapsed={!open.orders} onToggle={() => toggle('orders')}>
-        Recent orders
-      </SectionLabel>
-      {open.orders && workOrders.slice(0, 3).map(wo => (
-        <div key={wo.id} style={{
-          background: 'var(--cl-card)',
-          border: '1px solid var(--cl-border)',
-          borderRadius: 8,
-          padding: '8px 12px',
-          marginBottom: 6,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-        }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 600, color: 'var(--cl-text-primary)', marginBottom: 2 }}>{wo.blockName}</div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 9, color: 'var(--cl-text-muted)' }}>{wo.department}</div>
-          </div>
-          <StatusBadge status={wo.status} />
-        </div>
-      ))}
 
     </div>
   );
 }
 
 // ─── Block detail ─────────────────────────────────────────────────────────────
-function BlockDetail({ block: initialBlock, onBack, onCreateOrder, creatingOrder, orderSuccess, demoMode }: {
+function BlockDetail({ block: initialBlock, onBack, onCreateOrder, creatingOrder, orderSuccess, demoMode, onPetitionReady }: {
   block: Block;
   onBack: () => void;
   onCreateOrder: (b: Block, type: string) => void;
   creatingOrder: boolean;
   orderSuccess: string | null;
   demoMode: boolean;
+  onPetitionReady: (doc: PetitionDoc) => void;
 }) {
   const [block, setBlock] = useState<Block>(initialBlock);
   const [loading, setLoading] = useState(false);
@@ -384,6 +366,8 @@ function BlockDetail({ block: initialBlock, onBack, onCreateOrder, creatingOrder
             <div style={{ marginTop: 12, fontSize: 9, color: 'var(--cl-text-muted)', fontStyle: 'italic', textAlign: 'right' }}>
               {block.mlScoring.source === 'watsonx_granite' ? `Powered by Granite via watsonx.ai` : `Rule-based fallback`}
             </div>
+
+            <PetitionDraftButton block={block} onPetitionReady={onPetitionReady} />
           </>
         ) : (
           <div style={{ fontSize: 12, color: 'var(--cl-text-muted)', textAlign: 'center', padding: '10px 0' }}>

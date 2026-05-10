@@ -1,12 +1,10 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 @AGENTS.md
 
 # CityLens — Frontend
 
-Toronto urban mapping platform with five analytical lenses (heat, equity, canopy, flood, air quality). Visualises how environmental layers correlate with income at the city-block level.
+Toronto urban mapping platform. Visualises environmental layers (heat, equity, canopy, flood, air quality) correlated with income at the city-block level.
 
 **Stack:** Next.js 16 · React 19 · Tailwind v4 · Mapbox GL JS 3.x · shadcn/ui (base-ui) · lucide-react
 
@@ -17,108 +15,113 @@ npm run dev          # http://localhost:3000
 npx tsc --noEmit     # type-check before committing
 ```
 
-## Design: fullscreen map + overlay panels
+## Layout — fullscreen map + overlay panels
 
-The map workspace (`/map`) is a fullscreen Mapbox canvas with overlay panels. The canvas **never resizes** — it sits at `absolute inset-0` always. Panels slide in/out via CSS `width` transition without touching the map.
+The map canvas sits at `absolute inset-0` and **never resizes**. Panels slide in/out via CSS `width` transition.
 
 ```
 HomeShell (relative h-[100dvh])
-├── MapView              absolute inset-0           z-0  — always full viewport
-├── NavBar wrapper       absolute left-0 right-0    z-20 — backdrop-blur-sm + bg-surface/95
-├── Floating Layers btn  absolute, transitions left  z-15 — right of left panel
-├── Left panel           absolute left-0            z-10 — w-80 open / w-10 collapsed
-└── Right panel          absolute right-0           z-10 — w-80 open / w-10 collapsed
+├── MapView              absolute inset-0           z-0
+├── NavBar wrapper       absolute left-0 right-0    z-20  — backdrop-blur-sm
+├── Floating Layers btn  absolute, transitions left  z-15
+├── Left panel           absolute left-0            z-10  — w-80 / w-10 collapsed
+└── Right panel          absolute right-0           z-10  — w-80 / w-10 collapsed
 ```
 
-**Layout constants (HomeShell.tsx):**
-- `PANEL_W = 320`, `PANEL_COLLAPSED = 40`, `NAV_H = 52`, `DEMO_BANNER_H = 36`
-- Floating Layers button: `left = (leftOpen ? 320 : 40) + 12`, transitions with `duration-300 ease-out`
+**Layout constants (HomeShell.tsx):** `PANEL_W = 320`, `PANEL_COLLAPSED = 40`, `NAV_H = 52`, `DEMO_BANNER_H = 36`
 
-Do not add a ResizeObserver — the map never needs resizing.
-
-**Stacking context gotcha:** The NavBar wrapper uses `backdrop-blur-sm` which creates a stacking context at z-20. Any tooltip or popover inside the right/left panels (z-10) must use `createPortal(el, document.body)` to escape — `position: fixed` alone is not enough. See `InfoTip` in `HomeShell.tsx` for the pattern.
+**Stacking context:** NavBar `backdrop-blur-sm` creates a stacking context at z-20. Tooltips/popovers inside panels must use `createPortal(el, document.body)` — `position: fixed` alone is not enough.
 
 ## Routes
 
 | Route | Entry point | Notes |
 |-------|-------------|-------|
-| `/` | `LandingView` | Marketing / explainer, not part of map workspace |
-| `/map` | `HomeShell` + `<DashboardPanel embedded />` | Full map workspace |
+| `/` | `LandingView` | Marketing page |
+| `/map` | `HomeShell` | Full map workspace |
 | `/dashboard` | `DashboardPanel` + `AppRouteNav` | Standalone equity overview |
-| `/block/[id]` | Server component | Block detail: vulnerability, IBM Granite AI scoring, interventions, work orders |
+| `/block/[id]` | Server component | Block detail with IBM Granite AI scoring |
 
-User-visible label is **"Overview"** everywhere (nav links, buttons, headings). The route `/dashboard` and component name `DashboardPanel` are unchanged.
+`DashboardPanel` is rendered server-side in `page.tsx` and passed as `rightPanel: ReactNode` to `HomeShell` to avoid making it async.
 
 ## Data flow in `HomeShell`
 
-`HomeShell` is the single source of truth for the map workspace. It owns all data and UI state and fans it out to children via props.
+Single source of truth for the map workspace.
 
-- **Data state:** `blocks`, `workOrders`, `equityAlerts`, `cityStats` — all fetched in parallel via `loadAll()` on mount and when `demoMode` changes
+- **Data:** `blocks`, `workOrders`, `equityAlerts`, `cityStats` — fetched in parallel via `loadAll()` on mount and on `demoMode` change
 - **UI state:** `leftOpen`, `rightOpen`, `activeView`, `viewMenuOpen`, `selectedBlock`, `mapThreshold`
-- `mapBlocks` = `blocks` filtered by `mapThreshold` severity — passed to `MapView` only. `InfoPanel` always receives full `blocks`.
-- `activeView` (`'heat' | 'equity' | 'canopy' | 'flood' | 'aqi'`) is controlled by the floating `Layers` button in `HomeShell`
-- `DashboardPanel` is rendered server-side in `page.tsx` and passed as `rightPanel: ReactNode` to avoid making `HomeShell` async
-- `NavBar` receives only `onRefresh` — it does not own data or `activeView`
-- `sortDir` for the High-priority list lives in `InfoPanel`, not `HomeShell`
+- `mapBlocks` = `blocks` filtered by `mapThreshold` — passed to `MapView` only; `InfoPanel` always gets full `blocks`
+- `activeView` (`'heat'|'equity'|'canopy'|'flood'|'aqi'`) controlled by floating Layers button
+- `sortDir` for the high-priority list lives in `InfoPanel`
+
+## Petition feature
+
+After AI Analysis loads in `BlockDetail`, a **Draft plan** button opens a dialog (name/org/target audience). On submit, a Next.js Route Handler (`src/app/api/petition/route.ts`) calls **Claude Haiku 4.5** (`claude-haiku-4-5`) and returns `{ subject, body }`.
+
+The petition doc appears in the right panel (`PetitionPanel`) — fully editable, downloadable as PDF via `@react-pdf/renderer`.
+
+- `PetitionStore` (context + localStorage `citylens.petitions.v1`) persists drafts across reloads
+- `PetitionDraftButton` is wrapped in `React.memo` so opening the dialog never re-renders the AI Analysis card
+- `PetitionDownloadButton` and `PetitionPDFDocument` are dynamically imported with `ssr: false`
+- `ANTHROPIC_API_KEY` is server-only (no `NEXT_PUBLIC_` prefix)
 
 ## MapView layers
 
-All layers use **Mapbox Standard** style (`mapbox://styles/mapbox/standard`). Wrong slot causes layers to render under 3D buildings.
+All layers use **Mapbox Standard** style. Wrong slot renders under 3D buildings.
 
-| Toggle id | Source endpoint | Layer IDs | Slot |
-|-----------|----------------|-----------|------|
+| Toggle | Source | Layer IDs | Slot |
+|--------|--------|-----------|------|
 | *(always on)* | `/blocks/geojson` | `blocks-fill`, `blocks-outline` | `middle` |
-| `canopy`, `zoning`, `flood_risk` | `/layers/overlays/geojson?layers=...` | `overlay-*` + `-outline` | `middle` |
+| `canopy`, `zoning`, `flood_risk` | `/layers/overlays/geojson?layers=...` | `overlay-*` | `middle` |
 | `air_quality` | `/layers/air_quality/geojson` | `aq-circles` | `top` |
 | `firms` | `/layers/firms/geojson` | `firms-circles` | `top` |
 | `ai_risk` | `/risk-scores` + `/blocks/geojson` | `blocks-ai-fill`, `blocks-ai-outline` | `middle` |
 
-Block markers are colored client-side by `getBlockColor(block, activeView)` in `MapView`. Map init: `center: [-79.3832, 43.6532]`, `zoom: 15.5`, `pitch: 55`, `bearing: -17.6`.
+Map init: `center: [-79.3832, 43.6532]`, `zoom: 15.5`, `pitch: 55`, `bearing: -17.6`.
 
 ## Demo mode
 
-`DemoProvider` (in `src/app/layout.tsx`) wraps the entire app. Default is `demoMode = true`.
+`DemoProvider` in `src/app/layout.tsx` wraps the entire app. Default `demoMode = true`.
 
-- Every function in `api.ts` accepts a `demo: boolean` parameter; when `true`, returns fixture data from `src/lib/demoData.ts`
-- `HomeShell` reads `demoMode` from context, passes it to all fetch calls, and re-fetches when it changes
-- The demo banner (fixed, 36px) offsets panel `top` via `panelTop = bannerH + NAV_H`
+- Every `api.ts` function accepts `demo: boolean`; when true, returns fixtures from `src/lib/demoData.ts`
+- Demo banner (36px) offsets panel `top` via `panelTop = bannerH + NAV_H`
 
-## API layer (`src/lib/api.ts`)
+## API layer
 
-All backend calls go through `fetchJson<T>(path)` which prepends `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`) and always sets `cache: 'no-store'`.
+`fetchJson<T>(path)` in `src/lib/api.ts` prepends `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`) and sets `cache: 'no-store'`.
 
-`mapApiBlockRow()` converts snake_case backend rows to camelCase `Block`. Income decile is derived from `income_median_cad` using hardcoded Toronto brackets (~$84k median).
+`mapApiBlockRow()` converts snake_case rows to camelCase `Block`. Income decile derived from `income_median_cad` using hardcoded Toronto brackets (~$84k median).
 
 ## Navigation
 
-Two separate navs — do not conflate them:
-- **`NavBar`** — map workspace only (inside `HomeShell`): logo, route links, refresh, demo toggle
-- **`AppRouteNav`** — thin breadcrumb bar used on `/dashboard` and `/block/*` pages
+- **`NavBar`** — map workspace only: logo, Map link, refresh, demo toggle
+- **`AppRouteNav`** — breadcrumb bar on `/dashboard` and `/block/*`
 
 ## Shared UI components (`src/components/ui/`)
 
-| Component | Purpose | Key props |
-|-----------|---------|-----------|
-| `AccentCard` | Left-border severity card wrapper | `accentColor`, `style`, `className` |
-| `DemoToggle` | Toggle switch for demo mode | `checked`, `onChange` |
-| `MetricTile` | Labeled metric cell | `label`, `value`, `unit?`, `color?`, `compact?` |
-| `SectionLabel` | Section header with optional collapse | `collapsed?`, `onToggle?`, `style?` |
-| `StatusBadge` | Work order status pill | `status: WorkOrder['status']` |
+| Component | Purpose |
+|-----------|---------|
+| `AccentCard` | Left-border severity card wrapper |
+| `DemoToggle` | Demo mode toggle switch |
+| `MetricTile` | Labeled metric cell |
+| `SectionLabel` | Section header with optional collapse toggle |
+| `StatusBadge` | Work order status pill |
+| `dialog.tsx` | `@base-ui/react` Dialog wrapped in shadcn-shaped exports |
 
-**Hover states:** React inline styles don't support `:hover`. Use Tailwind arbitrary classes (`hover:bg-[rgba(...)]`) alongside inline styles for hover tint on interactive elements.
+**Hover states:** React inline styles don't support `:hover`. Use Tailwind arbitrary classes alongside inline styles for interactive hover tints. Non-interactive cards must not have hover styles.
 
 ## Styling conventions
 
-- **Design tokens:** `--cl-*` CSS variables in `globals.css` (earthy palette: greens, heats, reds)
-- **Fonts:** `--font-display` = Fraunces, `--font-body` = Source Sans 3, `--font-mono` = DM Sans
-- Map workspace components use inline `style` props for dynamic values; static structure uses Tailwind classes
-- Use `cn()` from `@/lib/utils` for conditional Tailwind classes
-- Tailwind v4: `@import "tailwindcss"`. Arbitrary props like `[will-change:width]` work without config
-- `cursor: pointer` is set globally in `globals.css` — no need to add per-component
+- **Tokens:** `--cl-*` CSS vars in `globals.css` (earthy palette: greens, heats, reds)
+- **Fonts:** `--font-display` = Fraunces · `--font-body` = Source Sans 3 · `--font-mono` = DM Sans
+- Dynamic values → inline `style` props; static structure → Tailwind classes
+- `cn()` from `@/lib/utils` for conditional Tailwind
+- Tailwind v4: `@import "tailwindcss"` — no config file needed for arbitrary props
+- `cursor: pointer` is global in `globals.css`
 
 ## Environment
 
 ```
 NEXT_PUBLIC_MAPBOX_TOKEN=   # styles:read, tiles:read, fonts:read
 NEXT_PUBLIC_API_URL=http://localhost:8000
+ANTHROPIC_API_KEY=          # server-only, no NEXT_PUBLIC_ prefix
 ```
