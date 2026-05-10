@@ -55,6 +55,10 @@ type ApiBlockRow = {
   income_median_cad: number | null;
   population: number | null;
   pm25: number | null;
+  /** Block polygon intersects a flood_risk overlay (from list/detail API). */
+  flood_overlay_hit?: boolean | null;
+  /** Distance (m) from block centroid to nearest flood overlay boundary. */
+  flood_edge_m?: number | null;
 };
 
 type ApiBlocksList = { items: ApiBlockRow[]; total: number };
@@ -130,7 +134,17 @@ function mapApiBlockRow(row: ApiBlockRow): Block {
     population: row.population ?? 0,
     interventions: [],
     airQualityIndex: row.pm25 != null ? Math.round(Number(row.pm25)) : 50,
-    floodRisk: 'low',
+    pm25Ugm3: row.pm25 != null ? Number(row.pm25) : null,
+    ...(() => {
+      const hit = row.flood_overlay_hit === true;
+      const er = row.flood_edge_m;
+      const edge =
+        er != null && Number.isFinite(Number(er)) ? Number(er) : null;
+      let floodRisk: Block['floodRisk'] = 'low';
+      if (hit) floodRisk = 'high';
+      else if (edge != null && edge < 950) floodRisk = 'medium';
+      return { floodRisk, floodEdgeM: edge };
+    })(),
   };
 }
 

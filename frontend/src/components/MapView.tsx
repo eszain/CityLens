@@ -84,6 +84,72 @@ function canopyColor(pct: number): string {
   return "#a84840";
 }
 
+function hashBlockId(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i);
+  return Math.abs(h);
+}
+
+/**
+ * Air lens: color from PM2.5 (µg/m³). Urban values often sit well below AQI-style
+ * cutoffs (100/130), so we use a continuous ramp instead of one flat "low" bucket.
+ */
+function airLensColorFromPm25(ug: number | null, blockId: string): string {
+  if (ug == null || Number.isNaN(ug)) {
+    const hue = 200 + (hashBlockId(blockId) % 35);
+    return `hsl(${hue}, 32%, 58%)`;
+  }
+  const v = Math.max(4, Math.min(85, ug));
+  const t = (v - 4) / 81;
+  const r1 = 34,
+    g1 = 211,
+    b1 = 238;
+  const r2 = 234,
+    g2 = 179,
+    b2 = 8;
+  const r3 = 220,
+    g3 = 38,
+    b3 = 38;
+  if (t < 0.55) {
+    const u = t / 0.55;
+    return `rgb(${Math.round(r1 + (r2 - r1) * u)},${Math.round(g1 + (g2 - g1) * u)},${Math.round(b1 + (b2 - b1) * u)})`;
+  }
+  const u = (t - 0.55) / 0.45;
+  return `rgb(${Math.round(r2 + (r3 - r2) * u)},${Math.round(g2 + (g3 - g2) * u)},${Math.round(b2 + (b3 - b2) * u)})`;
+}
+
+function airLensMarkerSize(ug: number | null, blockId: string): number {
+  if (ug == null || Number.isNaN(ug)) return 12 + (hashBlockId(blockId) % 5);
+  const v = Math.max(4, Math.min(85, ug));
+  return Math.round(12 + (v / 85) * 14);
+}
+
+/** Flood lens: softer in-plain color; low uses distance to flood boundary so most blocks are not one flat olive. */
+function floodLensColor(block: Block): string {
+  if (block.floodRisk === "high") return "#c2410c";
+  if (block.floodRisk === "medium") return "#b45309";
+  const d = block.floodEdgeM;
+  if (d != null && Number.isFinite(d)) {
+    const u = Math.max(0, Math.min(1, d / 10000));
+    const r = Math.round(78 + u * 52);
+    const g = Math.round(108 + u * 42);
+    const b = Math.round(100 + u * 38);
+    return `rgb(${r},${g},${b})`;
+  }
+  const hue = 138 + (hashBlockId(block.id) % 22);
+  return `hsl(${hue}, 16%, 52%)`;
+}
+
+function floodLensMarkerSize(block: Block): number {
+  if (block.floodRisk === "high") return 19;
+  if (block.floodRisk === "medium") return 17;
+  const d = block.floodEdgeM;
+  if (d != null && Number.isFinite(d)) {
+    return Math.round(12 + Math.max(0, Math.min(1, d / 12000)) * 9);
+  }
+  return 13 + (hashBlockId(block.id) % 4);
+}
+
 function getBlockColor(block: Block, view: ActiveView): string {
   switch (view) {
     case "equity":
@@ -91,17 +157,9 @@ function getBlockColor(block: Block, view: ActiveView): string {
     case "canopy":
       return canopyColor(block.treeCanopy);
     case "flood":
-      return block.floodRisk === "high"
-        ? "#a84840"
-        : block.floodRisk === "medium"
-          ? "#b8876e"
-          : "#6d8069";
+      return floodLensColor(block);
     case "aqi":
-      return block.airQualityIndex > 130
-        ? "#a84840"
-        : block.airQualityIndex > 100
-          ? "#b8876e"
-          : "#6d8069";
+      return airLensColorFromPm25(block.pm25Ugm3, block.id);
     default:
       return heatColor(block.heatScore);
   }
@@ -527,7 +585,16 @@ export function MapView({
     for (const block of blocks) {
       const color = getBlockColor(block, activeView);
       const isSelected = selectedBlock?.id === block.id;
-      const size = isSelected ? 28 : block.heatScore > 70 ? 20 : 14;
+      const size = (() => {
+        if (isSelected) return 28;
+        if (activeView === "aqi") {
+          return airLensMarkerSize(block.pm25Ugm3, block.id);
+        }
+        if (activeView === "flood") {
+          return floodLensMarkerSize(block);
+        }
+        return block.heatScore > 70 ? 20 : 14;
+      })();
 
       const el = document.createElement("div");
       el.style.cssText = `

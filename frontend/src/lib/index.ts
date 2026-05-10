@@ -14,7 +14,11 @@ export interface Block {
   population: number;
   interventions: Intervention[];
   airQualityIndex: number;
+  /** Nearest PM2.5 µg/m³ from API; null if no reading — Air lens uses this for color/size. */
+  pm25Ugm3: number | null;
   floodRisk: 'high' | 'medium' | 'low';
+  /** Metres from block centroid to nearest flood-plain overlay boundary; null if no flood layers. */
+  floodEdgeM: number | null;
 }
 
 export interface Intervention {
