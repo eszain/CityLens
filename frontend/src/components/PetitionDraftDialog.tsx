@@ -128,7 +128,7 @@ function PetitionDraftDialogContent({
       <DialogHeader>
         <DialogTitle>Draft a petition</DialogTitle>
         <DialogDescription>
-          Claude Haiku will draft a petition based on the AI analysis of{' '}
+          An AI will draft a petition based on the analysis of{' '}
           <strong>{block.name}</strong>. You can edit and download the result
           as a PDF in the right panel.
         </DialogDescription>
@@ -221,7 +221,7 @@ function PetitionDraftDialogContent({
             {submitting ? (
               <>
                 <Loader2 size={14} className="animate-spin" aria-hidden />
-                Drafting with Haiku…
+                Drafting…
               </>
             ) : (
               <>

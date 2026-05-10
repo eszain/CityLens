@@ -97,7 +97,7 @@ export function PetitionPanel({ doc, onClose }: Props) {
             marginBottom: 6,
           }}
         >
-          CLAUDE HAIKU · DRAFT PETITION
+          AI · DRAFT PETITION
         </div>
         <input
           type="text"
