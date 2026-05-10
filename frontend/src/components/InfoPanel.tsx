@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import type { ActiveView, Block, EquityAlert, WorkOrder } from '@/types';
 import { createWorkOrder } from '@/lib/api';
+import { AccentCard } from '@/components/ui/accent-card';
+import { MetricTile } from '@/components/ui/metric-tile';
+import { SectionLabel } from '@/components/ui/section-label';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 interface Props {
   selectedBlock: Block | null;
@@ -83,44 +87,53 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
   workOrders: any[];
   setSelectedBlock: (b: Block) => void;
 }) {
+  const [open, setOpen] = useState({ priority: true, alerts: true, orders: true });
+  const toggle = (key: keyof typeof open) => setOpen(s => ({ ...s, [key]: !s[key] }));
+
   return (
     <div style={{ padding: '16px 14px' }}>
-      <SectionLabel>High-priority areas</SectionLabel>
+      <SectionLabel collapsed={!open.priority} onToggle={() => toggle('priority')}>
+        High-priority areas
+      </SectionLabel>
 
-      {loading ? (
-        Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="loading-shimmer" style={{ height: 60, borderRadius: 8, marginBottom: 6 }} />
-        ))
-      ) : (
-        criticalBlocks.map(block => (
-          <button key={block.id} onClick={() => setSelectedBlock(block)} style={{
-            width: '100%',
-            background: 'var(--cl-card)',
-            border: '1px solid rgba(239,68,68,0.25)',
-            borderLeft: '3px solid var(--cl-red-500)',
-            borderRadius: 8,
-            padding: '10px 12px',
-            cursor: 'pointer',
-            marginBottom: 6,
-            textAlign: 'left',
-            transition: 'var(--transition)',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--cl-card-hover)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'var(--cl-card)')}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: 'var(--cl-text-primary)' }}>{block.name}</span>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--cl-red-400)', fontWeight: 700 }}>{block.heatScore}</span>
-            </div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--cl-text-muted)' }}>
-              +{block.temperatureDelta}°C · Decile {block.incomeDecile} · {block.treeCanopy}% canopy
-            </div>
-          </button>
-        ))
+      {open.priority && (
+        loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="loading-shimmer" style={{ height: 60, borderRadius: 8, marginBottom: 6 }} />
+          ))
+        ) : (
+          criticalBlocks.map(block => (
+            <button key={block.id} onClick={() => setSelectedBlock(block)} style={{
+              width: '100%',
+              background: 'var(--cl-card)',
+              border: '1px solid rgba(239,68,68,0.25)',
+              borderLeft: '3px solid var(--cl-red-500)',
+              borderRadius: 8,
+              padding: '10px 12px',
+              cursor: 'pointer',
+              marginBottom: 6,
+              textAlign: 'left',
+              transition: 'var(--transition)',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--cl-card-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--cl-card)')}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600, color: 'var(--cl-text-primary)' }}>{block.name}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--cl-red-400)', fontWeight: 700 }}>{block.heatScore}</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--cl-text-muted)' }}>
+                +{block.temperatureDelta}°C · Decile {block.incomeDecile} · {block.treeCanopy}% canopy
+              </div>
+            </button>
+          ))
+        )
       )}
 
-      <SectionLabel style={{ marginTop: 20 }}>Equity alerts</SectionLabel>
-      {equityAlerts.slice(0, 2).map(alert => (
+      <SectionLabel style={{ marginTop: 20 }} collapsed={!open.alerts} onToggle={() => toggle('alerts')}>
+        Equity alerts
+      </SectionLabel>
+      {open.alerts && equityAlerts.slice(0, 2).map(alert => (
         <div key={alert.id} style={{
           background: 'var(--cl-card)',
           border: '1px solid rgba(239,68,68,0.2)',
@@ -140,8 +153,10 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
         </div>
       ))}
 
-      <SectionLabel style={{ marginTop: 20 }}>Recent orders</SectionLabel>
-      {workOrders.slice(0, 3).map(wo => (
+      <SectionLabel style={{ marginTop: 20 }} collapsed={!open.orders} onToggle={() => toggle('orders')}>
+        Recent orders
+      </SectionLabel>
+      {open.orders && workOrders.slice(0, 3).map(wo => (
         <div key={wo.id} style={{
           background: 'var(--cl-card)',
           border: '1px solid var(--cl-border)',
@@ -160,19 +175,6 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
         </div>
       ))}
 
-      <div style={{
-        marginTop: 24,
-        padding: '12px',
-        background: 'var(--cl-card)',
-        border: '1px solid var(--cl-border)',
-        borderRadius: 8,
-        fontFamily: 'var(--font-body)',
-        fontSize: 10,
-        color: 'var(--cl-text-muted)',
-        lineHeight: 1.6,
-      }}>
-        ← Click any marker on the map to inspect a city block and trigger AI scoring.
-      </div>
     </div>
   );
 }
@@ -185,6 +187,8 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
   creatingOrder: boolean;
   orderSuccess: string | null;
 }) {
+  const [actionsOpen, setActionsOpen] = useState(true);
+
   const severityColor = {
     critical: 'var(--cl-red-400)',
     high: 'var(--cl-heat-400)',
@@ -202,14 +206,7 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
       }}>← BACK</button>
 
       {/* Block header */}
-      <div style={{
-        background: 'var(--cl-card)',
-        border: `1px solid ${severityColor}40`,
-        borderLeft: `3px solid ${severityColor}`,
-        borderRadius: 8,
-        padding: '12px 14px',
-        marginBottom: 12,
-      }}>
+      <AccentCard accentColor={severityColor} style={{ marginBottom: 12 }}>
         <div style={{
           fontFamily: 'var(--font-display)',
           fontSize: 16,
@@ -221,30 +218,16 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--cl-text-muted)', fontWeight: 500 }}>
           {block.severity} · income decile {block.incomeDecile}
         </div>
-      </div>
+      </AccentCard>
 
       {/* Key metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
-        {[
-          { label: 'Heat score', value: block.heatScore, color: severityColor, unit: '/100' },
-          { label: 'Temp delta', value: `+${block.temperatureDelta}`, color: 'var(--cl-heat-700)', unit: '°C' },
-          { label: 'Tree canopy', value: block.treeCanopy, color: 'var(--cl-green-800)', unit: '%' },
-          { label: 'Impervious', value: block.impervious, color: 'var(--cl-text-secondary)', unit: '%' },
-          { label: 'Population', value: block.population.toLocaleString(), color: 'var(--cl-text-secondary)', unit: '' },
-          { label: 'AQI', value: block.airQualityIndex, color: block.airQualityIndex > 130 ? 'var(--cl-red-400)' : 'var(--cl-heat-700)', unit: '' },
-        ].map(m => (
-          <div key={m.label} style={{
-            background: 'var(--cl-card)',
-            border: '1px solid var(--cl-border)',
-            borderRadius: 6,
-            padding: '8px 10px',
-          }}>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--cl-text-muted)', marginBottom: 2, fontWeight: 500 }}>{m.label}</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: m.color, letterSpacing: '-0.02em' }}>
-              {m.value}<span style={{ fontSize: 11, fontWeight: 400 }}>{m.unit}</span>
-            </div>
-          </div>
-        ))}
+        <MetricTile label="Heat score"  value={block.heatScore}                    unit="/100" color={severityColor} />
+        <MetricTile label="Temp delta"  value={`+${block.temperatureDelta}`}        unit="°C"   color="var(--cl-heat-700)" />
+        <MetricTile label="Tree canopy" value={block.treeCanopy}                    unit="%"    color="var(--cl-green-800)" />
+        <MetricTile label="Impervious"  value={block.impervious}                    unit="%"    color="var(--cl-text-secondary)" />
+        <MetricTile label="Population"  value={block.population.toLocaleString()}               color="var(--cl-text-secondary)" />
+        <MetricTile label="AQI"         value={block.airQualityIndex}                           color={block.airQualityIndex > 130 ? 'var(--cl-red-400)' : 'var(--cl-heat-700)'} />
       </div>
 
       {/* Flood risk */}
@@ -269,8 +252,10 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
       {/* Interventions */}
       {block.interventions.length > 0 && (
         <>
-          <SectionLabel>Suggested actions</SectionLabel>
-          {block.interventions.sort((a, b) => b.priority - a.priority).map((inv, i) => (
+          <SectionLabel collapsed={!actionsOpen} onToggle={() => setActionsOpen(o => !o)}>
+            Suggested actions
+          </SectionLabel>
+          {actionsOpen && block.interventions.sort((a, b) => b.priority - a.priority).map((inv, i) => (
             <div key={i} style={{
               background: 'var(--cl-card)',
               border: '1px solid var(--cl-border)',
@@ -326,39 +311,3 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
   );
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function SectionLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div style={{
-      fontFamily: 'var(--font-display)',
-      fontSize: 14,
-      fontWeight: 600,
-      color: 'var(--cl-text-secondary)',
-      marginBottom: 8,
-      paddingBottom: 6,
-      borderBottom: '1px solid var(--cl-border)',
-      ...style,
-    }}>{children}</div>
-  );
-}
-
-function StatusBadge({ status }: { status: WorkOrder['status'] }) {
-  const cfg = {
-    pending: { color: 'var(--cl-heat-500)', label: 'Pending' },
-    dispatched: { color: 'var(--cl-heat-700)', label: 'Sent' },
-    in_progress: { color: 'var(--cl-green-700)', label: 'Active' },
-    completed: { color: 'var(--cl-green-800)', label: 'Done' },
-  }[status];
-  return (
-    <span style={{
-      fontFamily: 'var(--font-body)',
-      fontSize: 11,
-      fontWeight: 600,
-      color: cfg.color,
-      border: `1px solid ${cfg.color}55`,
-      padding: '3px 8px',
-      borderRadius: 6,
-      flexShrink: 0,
-    }}>{cfg.label}</span>
-  );
-}

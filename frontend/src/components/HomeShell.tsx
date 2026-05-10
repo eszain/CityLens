@@ -1,7 +1,7 @@
 'use client';
 
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight, Layers } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useDemoMode } from '@/components/DemoProvider';
 import { InfoPanel } from '@/components/InfoPanel';
 import { MapView } from '@/components/MapView';
@@ -13,6 +13,14 @@ import {
   fetchWorkOrders,
 } from '@/lib/api';
 import type { ActiveView, Block, CityStats, EquityAlert, WorkOrder } from '@/types';
+
+const VIEWS: { id: ActiveView; label: string }[] = [
+  { id: 'heat', label: 'Heat' },
+  { id: 'equity', label: 'Equity' },
+  { id: 'canopy', label: 'Canopy' },
+  { id: 'flood', label: 'Flood' },
+  { id: 'aqi', label: 'Air' },
+];
 
 const PANEL_W = 320; // w-80
 const PANEL_COLLAPSED = 40; // w-10
@@ -35,6 +43,8 @@ export function HomeShell({ rightPanel }: HomeShellProps) {
   const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  const [viewMenuOpen, setViewMenuOpen] = useState(false);
+  const viewMenuRef = useRef<HTMLDivElement>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -64,6 +74,17 @@ export function HomeShell({ rightPanel }: HomeShellProps) {
     loadAll();
   }, [loadAll]);
 
+  useEffect(() => {
+    if (!viewMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (viewMenuRef.current && !viewMenuRef.current.contains(e.target as Node)) {
+        setViewMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [viewMenuOpen]);
+
   const bannerH = demoMode ? DEMO_BANNER_H : 0;
   const panelTop = bannerH + NAV_H;
 
@@ -87,11 +108,84 @@ export function HomeShell({ rightPanel }: HomeShellProps) {
         style={{ top: bannerH, height: NAV_H }}
       >
         <NavBar
-          activeView={activeView}
-          setActiveView={setActiveView}
           cityStats={cityStats}
           onRefresh={loadAll}
         />
+      </div>
+
+      {/* Floating layers / view filter button — sits just right of the left panel */}
+      <div
+        ref={viewMenuRef}
+        className="absolute z-15 transition-[left] duration-300 ease-out"
+        style={{ left: leftOpen ? PANEL_W + 12 : PANEL_COLLAPSED + 12, top: panelTop + 12 }}
+      >
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={viewMenuOpen}
+          aria-label={`Map view: ${VIEWS.find((v) => v.id === activeView)?.label ?? 'Heat'}. Open menu to change layer.`}
+          onClick={() => setViewMenuOpen((o) => !o)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            border: '1px solid var(--cl-border-bright)',
+            background: 'var(--cl-surface)',
+            color: 'var(--cl-green-800)',
+            boxShadow: '0 2px 8px rgba(42,38,33,0.10)',
+            transition: 'var(--transition)',
+          }}
+        >
+          <Layers size={20} strokeWidth={2.25} aria-hidden />
+        </button>
+        {viewMenuOpen && (
+          <div
+            role="menu"
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 6px)',
+              left: 0,
+              minWidth: 160,
+              borderRadius: 12,
+              background: 'var(--cl-card)',
+              border: '1px solid var(--cl-border)',
+              boxShadow: '0 10px 28px rgba(42,38,33,0.12)',
+              zIndex: 200,
+              overflow: 'hidden',
+            }}
+          >
+            {VIEWS.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                role="menuitem"
+                onClick={() => { setActiveView(v.id); setViewMenuOpen(false); }}
+                className={
+                  activeView === v.id
+                    ? 'bg-[rgba(109,128,105,0.18)]'
+                    : 'bg-transparent hover:bg-[rgba(109,128,105,0.10)]'
+                }
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '10px 16px',
+                  border: 'none',
+                  color: 'var(--cl-text-primary)',
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 14,
+                  fontWeight: activeView === v.id ? 700 : 500,
+                  transition: 'background 0.15s',
+                }}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Left overlay */}
