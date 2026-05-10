@@ -1,5 +1,14 @@
 export type HeatSeverity = 'critical' | 'high' | 'medium' | 'low';
 
+export interface MlScoring {
+  heat_risk?: HeatSeverity | null;
+  summary?: string | null;
+  top_interventions?: string[] | null;
+  confidence?: string | null;
+  source?: string | null;
+  model?: string | null;
+}
+
 export interface Block {
   id: string;
   name: string;
@@ -19,6 +28,7 @@ export interface Block {
   floodRisk: 'high' | 'medium' | 'low';
   /** Metres from block centroid to nearest flood-plain overlay boundary; null if no flood layers. */
   floodEdgeM: number | null;
+  mlScoring?: MlScoring | null;
 }
 
 export interface Intervention {
