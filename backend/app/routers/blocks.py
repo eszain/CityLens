@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from app.deps import DbConn
 from app.pg_json import decode_pg_json
 from app.services import scoring
+from app.services.featherless import score_block_featherless
 from app.services.watsonx import score_block_ml
 
 router = APIRouter(prefix="/blocks", tags=["blocks"])
@@ -282,7 +283,8 @@ async def get_block(conn: DbConn, block_id: UUID, city: str = Query("toronto")) 
         "vulnerability_score": row["vulnerability_score"],
     }
 
-    ml = await score_block_ml({"block_id": str(block_id), **block_for_score})
+    ml = await score_block_featherless({"block_id": str(block_id), **block_for_score})
+    
     if ml:
         props["ml_scoring"] = ml
 

@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     watsonx_url: str | None = None
     watsonx_space_id: str | None = None
 
+    featherless_api_key: str | None = None
+    featherless_model: str = "Qwen/Qwen3.6-35B-A3B"
+
     # IBM Cloud Object Storage — used by watsonx.data archiving
     cos_api_key: str | None = None
     cos_instance_crn: str | None = None

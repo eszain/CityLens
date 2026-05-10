@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ActiveView, Block, EquityAlert, WorkOrder } from '@/types';
 import { createWorkOrder } from '@/lib/api';
 import { AccentCard } from '@/components/ui/accent-card';
@@ -81,6 +81,7 @@ export function InfoPanel({
           onCreateOrder={handleCreateOrder}
           creatingOrder={creatingOrder}
           orderSuccess={orderSuccess}
+          demoMode={demoMode}
         />
       ) : (
         <DefaultPanel
@@ -242,14 +243,35 @@ function DefaultPanel({ loading, criticalBlocks, equityAlerts, workOrders, setSe
 }
 
 // ─── Block detail ─────────────────────────────────────────────────────────────
-function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess }: {
+function BlockDetail({ block: initialBlock, onBack, onCreateOrder, creatingOrder, orderSuccess, demoMode }: {
   block: Block;
   onBack: () => void;
   onCreateOrder: (b: Block, type: string) => void;
   creatingOrder: boolean;
   orderSuccess: string | null;
+  demoMode: boolean;
 }) {
+  const [block, setBlock] = useState<Block>(initialBlock);
+  const [loading, setLoading] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(true);
+
+  // Fetch rich detail (including Watson AI scoring) when selected
+  useEffect(() => {
+    async function loadDetail() {
+      setLoading(true);
+      try {
+        const { fetchBlock } = await import('@/lib/api');
+        // We use the demoMode state passed from the parent to determine whether to fetch real data
+        const detail = await fetchBlock(initialBlock.id, demoMode);
+        setBlock(detail);
+      } catch (err) {
+        console.error('Failed to fetch block detail:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadDetail();
+  }, [initialBlock.id]);
 
   const severityColor = {
     critical: 'var(--cl-red-400)',
@@ -290,6 +312,84 @@ function BlockDetail({ block, onBack, onCreateOrder, creatingOrder, orderSuccess
         <MetricTile label="Impervious"  value={block.impervious}                    unit="%"    color="var(--cl-text-secondary)" />
         <MetricTile label="Population"  value={block.population.toLocaleString()}               color="var(--cl-text-secondary)" />
         <MetricTile label="AQI"         value={block.airQualityIndex}                           color={block.airQualityIndex > 130 ? 'var(--cl-red-400)' : 'var(--cl-heat-700)'} />
+      </div>
+
+      {/* IBM Granite AI Analysis */}
+      <div style={{
+        background: 'var(--cl-card)',
+        border: '1px solid var(--cl-border)',
+        borderRadius: 10,
+        padding: '14px',
+        marginBottom: 12,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, color: 'var(--cl-text-muted)', letterSpacing: '0.05em' }}>
+            IBM GRANITE · AI ANALYSIS
+          </span>
+          {block.mlScoring?.confidence && (
+            <span style={{
+              background: 'var(--cl-surface)',
+              border: '1px solid var(--cl-border)',
+              borderRadius: 4,
+              padding: '1px 6px',
+              fontSize: 10,
+              color: 'var(--cl-text-muted)',
+              fontWeight: 600
+            }}>
+              {block.mlScoring.confidence} confidence
+            </span>
+          )}
+        </div>
+
+        {loading ? (
+          <div style={{ fontSize: 12, color: 'var(--cl-text-muted)', textAlign: 'center', padding: '10px 0' }}>
+            Loading AI insights...
+          </div>
+        ) : block.mlScoring ? (
+          <>
+            <div style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: 13,
+              color: 'var(--cl-text-primary)',
+              lineHeight: 1.5,
+              marginBottom: 12
+            }}>
+              {block.mlScoring.summary}
+            </div>
+
+            {block.mlScoring.top_interventions && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 9, fontWeight: 800, color: 'var(--cl-text-muted)', marginBottom: 6, letterSpacing: '0.05em' }}>
+                  AI RECOMMENDED INTERVENTIONS
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {block.mlScoring.top_interventions.map((action, i) => (
+                    <div key={i} style={{
+                      fontSize: 12,
+                      color: 'var(--cl-text-secondary)',
+                      padding: '6px 10px',
+                      background: 'var(--cl-surface)',
+                      borderRadius: 6,
+                      borderLeft: '2px solid var(--cl-green-500)',
+                      lineHeight: 1.3
+                    }}>
+                      {action}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div style={{ marginTop: 12, fontSize: 9, color: 'var(--cl-text-muted)', fontStyle: 'italic', textAlign: 'right' }}>
+              {block.mlScoring.source === 'watsonx_granite' ? `Powered by Granite via watsonx.ai` : `Rule-based fallback`}
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize: 12, color: 'var(--cl-text-muted)', textAlign: 'center', padding: '10px 0' }}>
+            AI insights unavailable for this block.
+          </div>
+        )}
       </div>
 
       {/* Flood risk */}

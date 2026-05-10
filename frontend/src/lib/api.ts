@@ -59,6 +59,7 @@ type ApiBlockRow = {
   flood_overlay_hit?: boolean | null;
   /** Distance (m) from block centroid to nearest flood overlay boundary. */
   flood_edge_m?: number | null;
+  ml_scoring?: import('@/lib/index').MlScoring | null;
 };
 
 type ApiBlocksList = { items: ApiBlockRow[]; total: number };
@@ -145,6 +146,7 @@ function mapApiBlockRow(row: ApiBlockRow): Block {
       else if (edge != null && edge < 950) floodRisk = 'medium';
       return { floodRisk, floodEdgeM: edge };
     })(),
+    mlScoring: row.ml_scoring,
   };
 }
 
