@@ -44,7 +44,7 @@ export function AppRouteNav({ active }: { active: Active }) {
       </Link>
       <span style={{ color: 'var(--cl-border-bright)', userSelect: 'none' }}>·</span>
       <Link href="/dashboard" style={linkStyle(onDashboard)}>
-        Dashboard
+        Overview
       </Link>
     </div>
   );
